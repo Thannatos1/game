@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Órbita</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#05050f;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
@@ -210,7 +211,7 @@ let selectedBg='space';
 let unlockedSkins=['default'];
 let unlockedBgs=['space'];
 let totalGoldCaptured=0;
-let menuScreen='main';
+let menuScreen='login'; // starts at login
 let zenMode=false;
 let zenUnlocked=false;
 // Stats
@@ -228,31 +229,154 @@ let slowMoTimer=0;
 let magnetTimer=0;
 let powerupSpawnTimer=0;
 
-// ============ SUPABASE / GLOBAL RANKING ============
+// ============ SUPABASE / AUTH / GLOBAL RANKING ============
 const SUPABASE_URL = 'https://poedjpfrwpdsdjjjduow.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvZWRqcGZyd3Bkc2RqampkdW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTgyNTksImV4cCI6MjA5MTU5NDI1OX0.6D0p4m9QPBPSlICDEMb2Y8umJpETbQ3FpInfwmpN-9o';
+
+let sb = null;
+try {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch(e) { console.error('Supabase init failed', e); }
+
+// Auth state
+let currentUser = null;
 let playerName = '';
-let nameInputActive = false;
-let nameInputBuffer = '';
+let authLoading = true;
+let needsNickname = false;
+let nicknameBuffer = '';
+let nicknameError = '';
+let nicknameChecking = false;
+
+// Ranking state
 let rankings = [];
 let rankingsLoading = false;
 let rankingsError = '';
 let userPosition = -1;
 let lastSubmittedScore = 0;
 
-async function submitScore(name, score, skin) {
+// Initialize auth on load
+async function initAuth() {
+  if (!sb) { authLoading = false; menuScreen='main'; return; }
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/rankings', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ name, score, skin })
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user;
+      await loadProfile();
+      // If has nickname, go straight to main menu
+      if (playerName && !needsNickname) {
+        menuScreen = 'main';
+      } else {
+        menuScreen = 'nickname';
+      }
+    } else {
+      menuScreen = 'login';
+    }
+  } catch(e) {
+    console.error('Auth init failed', e);
+    menuScreen = 'login';
+  }
+  authLoading = false;
+}
+
+async function loadProfile() {
+  if (!sb || !currentUser) return;
+  try {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('name')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (data && data.name) {
+      playerName = data.name;
+      needsNickname = false;
+    } else {
+      needsNickname = true;
+    }
+  } catch(e) {
+    console.error('Load profile failed', e);
+  }
+}
+
+async function signInWithGoogle() {
+  if (!sb) return;
+  try {
+    await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname }
     });
-    return res.ok;
+  } catch(e) { console.error('Sign in failed', e); }
+}
+
+async function signOut() {
+  if (!sb) return;
+  try {
+    await sb.auth.signOut();
+    currentUser = null;
+    playerName = '';
+    needsNickname = false;
+    menuScreen = 'main';
+  } catch(e) { console.error('Sign out failed', e); }
+}
+
+async function checkNicknameAvailable(name) {
+  if (!sb) return false;
+  try {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('name')
+      .eq('name', name)
+      .maybeSingle();
+    if (error) throw error;
+    return !data; // available if no result
+  } catch(e) {
+    console.error('Check failed', e);
+    return false;
+  }
+}
+
+async function saveNickname(name) {
+  if (!sb || !currentUser) return false;
+  try {
+    const { error } = await sb
+      .from('profiles')
+      .upsert({ id: currentUser.id, name: name });
+    if (error) throw error;
+    playerName = name;
+    needsNickname = false;
+    return true;
+  } catch(e) {
+    console.error('Save nickname failed', e);
+    return false;
+  }
+}
+
+async function submitScore(score, skin) {
+  if (!sb || !currentUser || !playerName) return false;
+  try {
+    // Check if user has existing entry
+    const { data: existing } = await sb
+      .from('rankings')
+      .select('id, score')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (existing) {
+      // Only update if new score is higher
+      if (score > existing.score) {
+        await sb.from('rankings')
+          .update({ score, skin, name: playerName })
+          .eq('id', existing.id);
+      }
+    } else {
+      await sb.from('rankings').insert({
+        user_id: currentUser.id,
+        name: playerName,
+        score,
+        skin
+      });
+    }
+    return true;
   } catch(e) {
     console.error('Submit failed', e);
     return false;
@@ -260,22 +384,24 @@ async function submitScore(name, score, skin) {
 }
 
 async function loadRankings() {
+  if (!sb) { rankingsError='Sem conexão'; return; }
   rankingsLoading = true;
   rankingsError = '';
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/rankings?select=*&order=score.desc&limit=50', {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    rankings = await res.json();
+    const { data, error } = await sb
+      .from('rankings')
+      .select('name, score, skin, user_id')
+      .order('score', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    rankings = data || [];
     userPosition = -1;
-    for(let i=0;i<rankings.length;i++){
-      if(rankings[i].name===playerName && rankings[i].score===best){
-        userPosition = i;
-        break;
+    if (currentUser) {
+      for (let i=0; i<rankings.length; i++) {
+        if (rankings[i].user_id === currentUser.id) {
+          userPosition = i;
+          break;
+        }
       }
     }
   } catch(e) {
@@ -284,6 +410,29 @@ async function loadRankings() {
   }
   rankingsLoading = false;
 }
+
+// Listen to auth state changes
+if (sb) {
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      await loadProfile();
+      // Redirect based on profile state
+      if (playerName && !needsNickname) {
+        menuScreen = 'main';
+      } else {
+        menuScreen = 'nickname';
+      }
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      playerName = '';
+      needsNickname = false;
+      menuScreen = 'login';
+    }
+  });
+}
+
+initAuth();
 
 // ============ ACHIEVEMENTS ============
 const ACHIEVEMENTS = {
@@ -388,7 +537,6 @@ try {
     bestComboEver = d.bestComboEver || 0;
     highestPhase = d.highestPhase || 1;
     achievements = d.achievements || [];
-    playerName = d.playerName || '';
   }
 } catch(e) {}
 
@@ -398,7 +546,7 @@ function saveData() {
       best, totalGames, muted, selectedSkin, selectedBg,
       unlockedSkins, unlockedBgs, totalGoldCaptured, zenUnlocked,
       totalScoreEver, totalNodesEver, bestComboEver, highestPhase,
-      achievements, playerName
+      achievements
     }));
   } catch(e) {}
 }
@@ -839,10 +987,10 @@ function die(){
   state=ST.DEAD;deathT=0;flashA=0.4;shakeT=0.35;shakeA=12;
   if(score>best){
     best=score;newRec=true;sndRecord();
-    // Submit to global ranking if we have a name and score is meaningful
-    if(playerName && score>=5 && score>lastSubmittedScore){
+    // Submit to global ranking if logged in
+    if(currentUser && playerName && score>=5 && score>lastSubmittedScore){
       lastSubmittedScore = score;
-      submitScore(playerName, score, selectedSkin);
+      submitScore(score, selectedSkin);
     }
   }
   else sndDie();
@@ -981,28 +1129,16 @@ C.addEventListener('mousedown',e=>{
   handleTap(e.clientX-rect.left, e.clientY-rect.top);
 });
 document.addEventListener('keydown',e=>{
-  if(nameInputActive){
+  if(menuScreen==='nickname' && state===ST.MENU){
     e.preventDefault();
+    nicknameError='';
     if(e.key==='Backspace'){
-      nameInputBuffer=nameInputBuffer.slice(0,-1);
-    } else if(e.key==='Enter'){
-      if(nameInputBuffer.trim().length>=2){
-        playerName=nameInputBuffer.trim().substring(0,16);
-        nameInputActive=false;
-        nameInputBuffer='';
-        saveData();
-        if(best>=5){
-          lastSubmittedScore=best;
-          submitScore(playerName,best,selectedSkin);
-        }
-        menuScreen='ranking';
-        loadRankings();
-      }
+      nicknameBuffer=nicknameBuffer.slice(0,-1);
     } else if(e.key==='Escape'){
-      nameInputActive=false;
-      nameInputBuffer='';
-    } else if(e.key.length===1 && nameInputBuffer.length<16){
-      nameInputBuffer+=e.key.toUpperCase();
+      menuScreen='main';
+    } else if(e.key.length===1 && nicknameBuffer.length<16){
+      const ch=e.key.toUpperCase();
+      if(/[A-Z0-9]/.test(ch))nicknameBuffer+=ch;
     }
     return;
   }
@@ -2728,9 +2864,8 @@ function drawMenuUI(){
   else if(menuScreen==='backgrounds')drawBackgroundsMenu();
   else if(menuScreen==='stats')drawStatsMenu();
   else if(menuScreen==='ranking')drawRankingMenu();
-
-  // Name input overlay (works on any menu screen)
-  if(nameInputActive)drawNameInput();
+  else if(menuScreen==='login')drawLoginScreen();
+  else if(menuScreen==='nickname')drawNicknameScreen();
 }
 
 function drawMainMenu(){
@@ -2795,9 +2930,10 @@ function drawMainMenu(){
 
   btnY+=btnH+8;
   drawMenuButton(btnX,btnY,btnW,btnH,'🌍 RANKING GLOBAL','#ff6b9d',false,()=>{
-    if(!playerName){
-      nameInputActive=true;
-      nameInputBuffer='';
+    if(needsNickname){
+      menuScreen='nickname';
+      nicknameBuffer='';
+      nicknameError='';
     } else {
       menuScreen='ranking';
       loadRankings();
@@ -3278,35 +3414,55 @@ function drawStatsMenu(){
 function drawRankingMenu(){
   X.textAlign='center';X.textBaseline='middle';
 
-  X.fillStyle='#e0e0ff';X.font='bold 28px -apple-system, system-ui, sans-serif';
+  X.fillStyle='#e0e0ff';X.font='bold 26px -apple-system, system-ui, sans-serif';
   X.shadowColor='#ff6b9d';X.shadowBlur=15;
-  X.fillText('🌍 RANKING GLOBAL',W/2,H*0.06);
+  X.fillText('🌍 RANKING GLOBAL',W/2,H*0.05);
   X.shadowBlur=0;
 
   drawBackBtn();
 
+  // Logout button
+  const loX=W-85, loY=H*0.04, loW=72, loH=28;
+  X.globalAlpha=0.7;
+  X.fillStyle='rgba(0,0,0,0.6)';
+  roundRect(loX,loY,loW,loH,8);
+  X.fill();
+  X.strokeStyle='#ff6b6b';X.lineWidth=1;
+  roundRect(loX,loY,loW,loH,8);
+  X.stroke();
+  X.fillStyle='#ff6b6b';
+  X.font='bold 10px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';X.textBaseline='middle';
+  X.fillText('SAIR',loX+loW/2,loY+loH/2);
+  X.globalAlpha=1;
+  menuBtnAreas.push({
+    x:loX,y:loY,w:loW,h:loH,
+    action:()=>{signOut();menuScreen='main';}
+  });
+
+  // Player info
+  X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='11px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';
+  X.fillText(playerName+' · Recorde: '+best,W/2,H*0.10);
+
   // Refresh button
-  const rbx=W-90, rby=H*0.05, rbw=70, rbh=32;
+  const rbx=W/2-40, rby=H*0.115, rbw=80, rbh=26;
   X.globalAlpha=0.8;
   X.fillStyle='rgba(0,0,0,0.6)';
-  roundRect(rbx,rby,rbw,rbh,8);
+  roundRect(rbx,rby,rbw,rbh,6);
   X.fill();
-  X.strokeStyle='#fff';X.lineWidth=1.5;
-  roundRect(rbx,rby,rbw,rbh,8);
+  X.strokeStyle='#00f5d4';X.lineWidth=1;
+  roundRect(rbx,rby,rbw,rbh,6);
   X.stroke();
-  X.fillStyle='#fff';
-  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.fillStyle='#00f5d4';
+  X.font='bold 10px -apple-system, system-ui, sans-serif';
   X.fillText('↻ ATUALIZAR',rbx+rbw/2,rby+rbh/2);
   X.globalAlpha=1;
   menuBtnAreas.push({
     x:rbx,y:rby,w:rbw,h:rbh,
     action:()=>{loadRankings();}
   });
-
-  // Player info
-  X.fillStyle='rgba(255,255,255,0.5)';
-  X.font='11px -apple-system, system-ui, sans-serif';
-  X.fillText('Você: '+playerName+' · Recorde: '+best,W/2,H*0.11);
 
   if(rankingsLoading){
     X.fillStyle='#fff';
@@ -3335,7 +3491,7 @@ function drawRankingMenu(){
   }
 
   // Ranking list
-  const startY=H*0.14;
+  const startY=H*0.16;
   const rowH=42;
   const maxRows=Math.floor((H*0.82)/rowH);
   const visibleRows=Math.min(maxRows, rankings.length);
@@ -3343,7 +3499,7 @@ function drawRankingMenu(){
   for(let i=0;i<visibleRows;i++){
     const r=rankings[i];
     const y=startY+i*rowH;
-    const isUser=r.name===playerName;
+    const isUser=currentUser && r.user_id===currentUser.id;
     const rank=i+1;
 
     // Row bg
@@ -3402,8 +3558,7 @@ function drawRankingMenu(){
     X.fillText(r.score,W-25,y+rowH/2-2);
   }
 
-  // If user not in top, show their position
-  if(userPosition===-1 && playerName && best>0){
+  if(userPosition===-1 && currentUser && best>0){
     X.globalAlpha=0.6;
     X.fillStyle='rgba(255,255,255,0.4)';
     X.font='11px -apple-system, system-ui, sans-serif';
@@ -3413,110 +3568,214 @@ function drawRankingMenu(){
   }
 }
 
-function drawNameInput(){
-  // Dim background
-  X.globalAlpha=0.85;
-  X.fillStyle='#000';
-  X.fillRect(-10,-10,W+20,H+20);
-  X.globalAlpha=1;
-
+function drawLoginScreen(){
   X.textAlign='center';X.textBaseline='middle';
 
-  // Title
-  X.shadowColor='#ff6b9d';X.shadowBlur=20;
-  X.fillStyle='#ff6b9d';
-  X.font='bold 32px -apple-system, system-ui, sans-serif';
-  X.fillText('SEU NOME',W/2,H*0.3);
+  // Big title
+  X.shadowColor='#b0b0ff';X.shadowBlur=30;
+  X.fillStyle='#e0e0ff';
+  X.font='bold 54px -apple-system, system-ui, sans-serif';
+  X.fillText('ÓRBITA',W/2,H*0.18);
   X.shadowBlur=0;
 
   X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='14px -apple-system, system-ui, sans-serif';
+  X.fillText('Salte de órbita em órbita',W/2,H*0.25);
+
+  // Animated preview ball
+  const py=H*0.42+Math.sin(menuT*2)*8;
+  X.save();
+  drawBallAt(W/2,py,1,false,selectedSkin);
+  X.restore();
+
+  // Welcome text
+  X.fillStyle='#ff6b9d';
+  X.font='bold 18px -apple-system, system-ui, sans-serif';
+  X.fillText('BEM-VINDO!',W/2,H*0.54);
+
+  X.fillStyle='rgba(255,255,255,0.55)';
   X.font='13px -apple-system, system-ui, sans-serif';
-  X.fillText('Como você quer aparecer no ranking?',W/2,H*0.36);
+  X.fillText('Faça login para começar a jogar',W/2,H*0.60);
+
+  // Google login button
+  const btnW=Math.min(W*0.8,300);
+  const btnH=56;
+  const btnX=(W-btnW)/2;
+  const btnY=H*0.66;
+
+  X.fillStyle='#ffffff';
+  roundRect(btnX,btnY,btnW,btnH,12);
+  X.fill();
+  X.strokeStyle='rgba(0,0,0,0.1)';
+  X.lineWidth=1;
+  roundRect(btnX,btnY,btnW,btnH,12);
+  X.stroke();
+  X.shadowColor='rgba(255,255,255,0.3)';
+  X.shadowBlur=20;
+  roundRect(btnX,btnY,btnW,btnH,12);
+  X.stroke();
+  X.shadowBlur=0;
+
+  // Google "G" icon
+  const iconX=btnX+36, iconY=btnY+btnH/2;
+  X.font='bold 28px sans-serif';
+  X.textAlign='center';
+  X.textBaseline='middle';
+  X.fillStyle='#4285F4';
+  X.fillText('G',iconX,iconY);
+
+  X.fillStyle='#1a1a2e';
+  X.font='bold 18px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('Entrar com Google',iconX+25,iconY);
+
+  menuBtnAreas.push({
+    x:btnX,y:btnY,w:btnW,h:btnH,
+    action:()=>{
+      signInWithGoogle();
+    }
+  });
+
+  // Info text
+  X.textAlign='center';
+  X.fillStyle='rgba(255,255,255,0.4)';
   X.font='11px -apple-system, system-ui, sans-serif';
-  X.fillText('(máx. 16 caracteres)',W/2,H*0.4);
+  X.fillText('Você poderá escolher um apelido único',W/2,H*0.82);
+  X.fillText('para competir no ranking global',W/2,H*0.855);
+
+  // Loading indicator
+  if(authLoading){
+    X.globalAlpha=0.7;
+    X.fillStyle='#fff';
+    X.font='12px -apple-system, system-ui, sans-serif';
+    X.fillText('Verificando sessão...',W/2,H*0.93);
+    X.globalAlpha=1;
+  }
+}
+
+function drawNicknameScreen(){
+  X.textAlign='center';X.textBaseline='middle';
+
+  // Title
+  X.shadowColor='#00f5d4';X.shadowBlur=20;
+  X.fillStyle='#00f5d4';
+  X.font='bold 32px -apple-system, system-ui, sans-serif';
+  X.fillText('ESCOLHA SEU',W/2,H*0.12);
+  X.fillText('APELIDO',W/2,H*0.17);
+  X.shadowBlur=0;
+
+  X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='12px -apple-system, system-ui, sans-serif';
+  X.fillText('Como você aparecerá no ranking',W/2,H*0.23);
+  X.font='10px -apple-system, system-ui, sans-serif';
+  X.fillText('(3-16 caracteres, único)',W/2,H*0.26);
 
   // Input box
   const ibW=Math.min(W*0.8,300);
-  const ibH=56;
+  const ibH=52;
   const ibX=(W-ibW)/2;
-  const ibY=H*0.45;
+  const ibY=H*0.30;
 
   X.fillStyle='rgba(0,0,0,0.6)';
   roundRect(ibX,ibY,ibW,ibH,12);
   X.fill();
-  X.strokeStyle='#ff6b9d';
+  X.strokeStyle=nicknameError?'#ff6b6b':'#00f5d4';
   X.lineWidth=2;
-  X.shadowColor='#ff6b9d';
-  X.shadowBlur=15;
+  X.shadowColor=nicknameError?'#ff6b6b':'#00f5d4';
+  X.shadowBlur=12;
   roundRect(ibX,ibY,ibW,ibH,12);
   X.stroke();
   X.shadowBlur=0;
 
   // Text + cursor
   X.fillStyle='#fff';
-  X.font='bold 22px -apple-system, system-ui, sans-serif';
+  X.font='bold 20px -apple-system, system-ui, sans-serif';
   X.textAlign='center';
   X.textBaseline='middle';
   const showCursor=Math.floor(menuT*2)%2===0;
-  const displayText=nameInputBuffer+(showCursor?'|':'');
+  const displayText=nicknameBuffer+(showCursor?'|':'');
   X.fillText(displayText||(showCursor?'|':''),W/2,ibY+ibH/2);
 
-  // Buttons
-  const btnW=Math.min(W*0.36,130);
-  const btnH=44;
-  const gap=12;
-  const totalW=btnW*2+gap;
-  const startX=(W-totalW)/2;
-  const btnsY=H*0.6;
+  // Error or status message
+  if(nicknameError){
+    X.fillStyle='#ff6b6b';
+    X.font='11px -apple-system, system-ui, sans-serif';
+    X.fillText(nicknameError,W/2,ibY+ibH+14);
+  } else if(nicknameChecking){
+    X.fillStyle='#ffd32a';
+    X.font='11px -apple-system, system-ui, sans-serif';
+    X.fillText('Verificando...',W/2,ibY+ibH+14);
+  }
 
-  // Cancel button
-  X.fillStyle='rgba(0,0,0,0.5)';
-  roundRect(startX,btnsY,btnW,btnH,10);
+  // Sign out button (top)
+  const soX=20, soY=H*0.05, soW=80, soH=30;
+  X.globalAlpha=0.7;
+  X.fillStyle='rgba(0,0,0,0.6)';
+  roundRect(soX,soY,soW,soH,8);
   X.fill();
-  X.strokeStyle='#888';
-  X.lineWidth=1.5;
-  roundRect(startX,btnsY,btnW,btnH,10);
+  X.strokeStyle='#ff6b6b';X.lineWidth=1;
+  roundRect(soX,soY,soW,soH,8);
   X.stroke();
-  X.fillStyle='#aaa';
-  X.font='bold 16px -apple-system, system-ui, sans-serif';
-  X.fillText('CANCELAR',startX+btnW/2,btnsY+btnH/2);
+  X.fillStyle='#ff6b6b';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';X.textBaseline='middle';
+  X.fillText('SAIR',soX+soW/2,soY+soH/2);
+  X.globalAlpha=1;
   menuBtnAreas.push({
-    x:startX,y:btnsY,w:btnW,h:btnH,
-    action:()=>{nameInputActive=false;nameInputBuffer='';}
+    x:soX,y:soY,w:soW,h:soH,
+    action:()=>{signOut();menuScreen='login';}
   });
 
   // Confirm button
-  const cx=startX+btnW+gap;
-  const canConfirm=nameInputBuffer.trim().length>=2;
+  const btnW=Math.min(W*0.7,260);
+  const btnH=48;
+  const btnX=(W-btnW)/2;
+  const btnY=ibY+ibH+36;
+
+  const canConfirm=nicknameBuffer.trim().length>=3 && !nicknameChecking;
   X.globalAlpha=canConfirm?1:0.4;
-  X.fillStyle=canConfirm?'#ff6b9d':'rgba(0,0,0,0.5)';
-  roundRect(cx,btnsY,btnW,btnH,10);
+  const g=X.createLinearGradient(btnX,btnY,btnX,btnY+btnH);
+  g.addColorStop(0,canConfirm?'#00f5d4':'rgba(0,0,0,0.4)');
+  g.addColorStop(1,'rgba(0,0,0,0.6)');
+  X.fillStyle=g;
+  roundRect(btnX,btnY,btnW,btnH,12);
   X.fill();
-  X.strokeStyle='#ff6b9d';
+  X.strokeStyle='#00f5d4';
   X.lineWidth=2;
-  if(canConfirm){X.shadowColor='#ff6b9d';X.shadowBlur=10;}
-  roundRect(cx,btnsY,btnW,btnH,10);
+  if(canConfirm){X.shadowColor='#00f5d4';X.shadowBlur=12;}
+  roundRect(btnX,btnY,btnW,btnH,12);
   X.stroke();
   X.shadowBlur=0;
   X.fillStyle='#fff';
-  X.font='bold 16px -apple-system, system-ui, sans-serif';
-  X.fillText('CONFIRMAR',cx+btnW/2,btnsY+btnH/2);
+  X.font='bold 18px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';X.textBaseline='middle';
+  X.fillText('CONFIRMAR',btnX+btnW/2,btnY+btnH/2);
   X.globalAlpha=1;
+
   if(canConfirm){
     menuBtnAreas.push({
-      x:cx,y:btnsY,w:btnW,h:btnH,
-      action:()=>{
-        playerName=nameInputBuffer.trim().substring(0,16);
-        nameInputActive=false;
-        nameInputBuffer='';
-        saveData();
-        // Submit current best if exists
-        if(best>=5){
-          lastSubmittedScore=best;
-          submitScore(playerName,best,selectedSkin);
+      x:btnX,y:btnY,w:btnW,h:btnH,
+      action:async ()=>{
+        const name=nicknameBuffer.trim();
+        nicknameChecking=true;
+        nicknameError='';
+        const available=await checkNicknameAvailable(name);
+        if(!available){
+          nicknameError='Apelido já em uso!';
+          nicknameChecking=false;
+          return;
         }
-        menuScreen='ranking';
-        loadRankings();
+        const saved=await saveNickname(name);
+        if(saved){
+          if(best>=5){
+            lastSubmittedScore=best;
+            await submitScore(best,selectedSkin);
+          }
+          menuScreen='main';
+        } else {
+          nicknameError='Erro ao salvar';
+        }
+        nicknameChecking=false;
       }
     });
   }
@@ -3531,9 +3790,9 @@ function drawVirtualKeyboard(){
     'ASDFGHJKL',
     'ZXCVBNM⌫'
   ];
-  const startY=H*0.72;
+  const startY=H*0.67;
   const keyW=Math.min(W*0.085,32);
-  const keyH=36;
+  const keyH=34;
   const gap=4;
 
   for(let r=0;r<keys.length;r++){
@@ -3565,42 +3824,47 @@ function drawVirtualKeyboard(){
       menuBtnAreas.push({
         x:kx,y:ky,w:keyW,h:keyH,
         action:()=>{
+          nicknameError='';
           if(ch==='⌫'){
-            nameInputBuffer=nameInputBuffer.slice(0,-1);
-          } else if(nameInputBuffer.length<16){
-            nameInputBuffer+=ch;
+            nicknameBuffer=nicknameBuffer.slice(0,-1);
+          } else if(nicknameBuffer.length<16){
+            nicknameBuffer+=ch;
           }
         }
       });
     }
   }
 
-  // Space bar
-  const spY=startY+3*(keyH+gap);
-  const spW=Math.min(W*0.5,200);
-  const spX=(W-spW)/2;
-  X.globalAlpha=0.8;
-  X.fillStyle='rgba(40,40,60,0.9)';
-  roundRect(spX,spY,spW,keyH,6);
-  X.fill();
-  X.strokeStyle='rgba(255,255,255,0.3)';
-  X.lineWidth=1;
-  roundRect(spX,spY,spW,keyH,6);
-  X.stroke();
-  X.fillStyle='rgba(255,255,255,0.6)';
-  X.font='10px -apple-system, system-ui, sans-serif';
-  X.textAlign='center';
-  X.textBaseline='middle';
-  X.fillText('ESPAÇO',spX+spW/2,spY+keyH/2);
-  X.globalAlpha=1;
-  menuBtnAreas.push({
-    x:spX,y:spY,w:spW,h:keyH,
-    action:()=>{
-      if(nameInputBuffer.length<16 && nameInputBuffer.length>0){
-        nameInputBuffer+=' ';
+  // Numbers row
+  const numRow='0123456789';
+  const nY=startY+3*(keyH+gap);
+  const nRowW=numRow.length*(keyW+gap)-gap;
+  const nRowX=(W-nRowW)/2;
+  for(let i=0;i<numRow.length;i++){
+    const ch=numRow[i];
+    const kx=nRowX+i*(keyW+gap);
+    X.globalAlpha=0.8;
+    X.fillStyle='rgba(40,40,60,0.9)';
+    roundRect(kx,nY,keyW,keyH,6);
+    X.fill();
+    X.strokeStyle='rgba(255,255,255,0.3)';
+    X.lineWidth=1;
+    roundRect(kx,nY,keyW,keyH,6);
+    X.stroke();
+    X.globalAlpha=1;
+    X.fillStyle='#fff';
+    X.font='bold 14px -apple-system, system-ui, sans-serif';
+    X.textAlign='center';
+    X.textBaseline='middle';
+    X.fillText(ch,kx+keyW/2,nY+keyH/2);
+    menuBtnAreas.push({
+      x:kx,y:nY,w:keyW,h:keyH,
+      action:()=>{
+        nicknameError='';
+        if(nicknameBuffer.length<16)nicknameBuffer+=ch;
       }
-    }
-  });
+    });
+  }
 }
 
 function drawDeadUI(){

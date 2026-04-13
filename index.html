@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co https://cdn.jsdelivr.net https://accounts.google.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com; connect-src 'self' https://*.supabase.co https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;">
 <title>Órbita</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#05050f;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
@@ -242,9 +243,13 @@ const SUPABASE_URL = 'https://poedjpfrwpdsdjjjduow.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvZWRqcGZyd3Bkc2RqampkdW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTgyNTksImV4cCI6MjA5MTU5NDI1OX0.6D0p4m9QPBPSlICDEMb2Y8umJpETbQ3FpInfwmpN-9o';
 
 let sb = null;
-try {
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-} catch(e) { console.error('Supabase init failed', e); }
+if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e) { console.error('Supabase init failed', e); }
+} else {
+  console.error('Supabase SDK not loaded');
+}
 
 // Auth state
 let currentUser = null;
@@ -264,13 +269,17 @@ let lastSubmittedScore = 0;
 
 // Initialize auth on load
 async function initAuth() {
-  if (!sb) { authLoading = false; menuScreen='main'; return; }
+  if (!sb) {
+    // SDK didn't load - skip auth, go straight to main (offline mode)
+    authLoading = false;
+    menuScreen = 'main';
+    return;
+  }
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (session && session.user) {
       currentUser = session.user;
       await loadProfile();
-      // If has nickname, go straight to main menu
       if (playerName && !needsNickname) {
         menuScreen = 'main';
       } else {

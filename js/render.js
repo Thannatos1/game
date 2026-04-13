@@ -440,6 +440,7 @@ function draw(){
   else if(state===ST.PAUSE){drawPlayUI();drawPauseScreen();drawMuteBtn();}
 
   X.restore();
+  return true;
 }
 
 function drawAsteroid(a,ax,ay){
@@ -1250,14 +1251,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(0.95);
+    setMusicVolume(0.12);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.75);
+    setMusicVolume(0.08);
   });
 }
 
@@ -1550,6 +1551,7 @@ function drawMenuUI(){
 
 
 function drawMissionInfoCard(x,y,w,compact){
+  if(!currentUser) return false;
   if(typeof ensureDailyMissionState==='function') ensureDailyMissionState();
   const mission = (typeof getDailyMissionTemplate==='function') ? getDailyMissionTemplate() : null;
   const event = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
@@ -1677,7 +1679,7 @@ function drawMainMenu(){
       menuScreen='settings';
     });
 
-    drawMissionInfoCard((W-Math.min(W*0.82,320))/2, H*0.80, Math.min(W*0.82,320), true);
+    if(currentUser) drawMissionInfoCard((W-Math.min(W*0.82,320))/2, H*0.80, Math.min(W*0.82,320), true);
     if(best>0){
       X.fillStyle='rgba(255,255,255,0.4)';
       X.font='14px -apple-system, system-ui, sans-serif';
@@ -1726,7 +1728,7 @@ function drawMainMenu(){
     });
   }
 
-  drawMissionInfoCard((W-Math.min(W*0.82,320))/2, Math.min(H*0.80, btnY+52), Math.min(W*0.82,320), true);
+  if(currentUser) drawMissionInfoCard((W-Math.min(W*0.82,320))/2, Math.min(H*0.80, btnY+52), Math.min(W*0.82,320), true);
 
   // Best score
   if(best>0){
@@ -2137,10 +2139,13 @@ function drawStatsMenu(){
   }
 
   const missionCardY=curY+Math.ceil(stats.length/cols)*(cellH+gap)+12;
-  drawMissionInfoCard((W-Math.min(W*0.86,330))/2, missionCardY, Math.min(W*0.86,330), false);
+  const missionCardVisible = !!currentUser;
+  if(missionCardVisible){
+    drawMissionInfoCard((W-Math.min(W*0.86,330))/2, missionCardY, Math.min(W*0.86,330), false);
+  }
 
   // Achievements section
-  const achY=missionCardY+102;
+  const achY=missionCardVisible ? missionCardY+102 : missionCardY;
   X.fillStyle='#ffd32a';
   X.font='bold 12px -apple-system, system-ui, sans-serif';
   X.textAlign='center';
@@ -3452,7 +3457,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.75);
+        setMusicVolume(0.08);
       });
     } else {
       // Smaller menu btn alongside
@@ -3461,7 +3466,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.75);
+        setMusicVolume(0.08);
       });
     }
   }

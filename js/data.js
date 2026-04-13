@@ -82,6 +82,8 @@ const BACKGROUNDS = {
   cosmic:   {name:'Cósmico',unlock:1000,type:'cosmic'},
 };
 
+// ============ MISSÕES / EVENTOS ============
+
 // Load saved data
 try {
   const saved = localStorage.getItem('orbita_save');
@@ -149,7 +151,6 @@ ensureDailyMissionState();
 
 let pendingUnlocks = [];
 
-// ============ MISSÕES / EVENTOS ============
 const DAILY_MISSION_TEMPLATES = [
   {id:'play_3', icon:'🎯', name:'Piloto do Dia', desc:'Termine 3 partidas hoje', metric:'games_finished', target:3, mode:'count'},
   {id:'score_20', icon:'🚀', name:'Arranque Perfeito', desc:'Faça 20 pontos em uma única run', metric:'best_run_score', target:20, mode:'max'},
@@ -168,9 +169,6 @@ const DAILY_REWARD_POOL = [
   {type:'bg', key:'galaxy'},
 ];
 
-let dailyMissionState = null;
-let currentEventState = null;
-let missionsCompletedTotal = 0;
 
 function getLocalDayKey(date){
   const d = date || new Date();

@@ -133,7 +133,7 @@ function initMusic() {
 
 function setMusicVolume(v) {
   if (musicGain) {
-    const target = muted ? 0 : v;
+    const target = muted ? 0 : v * musicVol;
     musicGain.gain.linearRampToValueAtTime(target, actx.currentTime + 0.3);
   }
 }
@@ -142,18 +142,23 @@ function toggleMute() {
   muted = !muted;
   saveData();
   if (musicGain) {
-    musicGain.gain.linearRampToValueAtTime(muted ? 0 : 0.12, actx.currentTime + 0.2);
+    musicGain.gain.linearRampToValueAtTime(muted ? 0 : 0.12 * musicVol, actx.currentTime + 0.2);
   }
 }
 
+function vibrate(pattern) {
+  if (!vibrationOn || !navigator.vibrate) return;
+  navigator.vibrate(pattern);
+}
+
 function playTone(freq, dur, type, vol, detune) {
-  if (!actx || muted) return;
+  if (!actx || muted || sfxVol<=0) return;
   const o = actx.createOscillator();
   const g = actx.createGain();
   o.type = type || 'sine';
   o.frequency.value = freq;
   if (detune) o.detune.value = detune;
-  g.gain.setValueAtTime((vol||0.15), actx.currentTime);
+  g.gain.setValueAtTime((vol||0.15)*sfxVol, actx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
   o.connect(g); g.connect(actx.destination);
   o.start(); o.stop(actx.currentTime + dur);
@@ -204,6 +209,9 @@ let lastCaptureTime=0;
 let tutorialStep=0;
 let tutorialT=0;
 let muted=false;
+let musicVol=0.5;  // 0-1
+let sfxVol=0.8;    // 0-1
+let vibrationOn=true;
 let goldFlashT=0;
 let goldZoomT=0;
 let selectedSkin='default';
@@ -411,6 +419,77 @@ async function loadRankings() {
   rankingsLoading = false;
 }
 
+async function deleteAccount() {
+  if (!sb || !currentUser) return false;
+  try {
+    // Delete ranking entry
+    await sb.from('rankings').delete().eq('user_id', currentUser.id);
+    // Delete profile
+    await sb.from('profiles').delete().eq('id', currentUser.id);
+    // Sign out (actual user deletion requires admin, but this effectively removes their presence)
+    await sb.auth.signOut();
+    // Clear local storage
+    try { localStorage.removeItem('orbita_save'); } catch(e) {}
+    // Reset all local state
+    currentUser = null;
+    playerName = '';
+    needsNickname = false;
+    best = 0;
+    totalGames = 0;
+    totalScoreEver = 0;
+    totalNodesEver = 0;
+    bestComboEver = 0;
+    highestPhase = 1;
+    totalGoldCaptured = 0;
+    achievements = [];
+    unlockedSkins = ['default'];
+    unlockedBgs = ['space'];
+    zenUnlocked = false;
+    selectedSkin = 'default';
+    selectedBg = 'space';
+    menuScreen = 'login';
+    return true;
+  } catch(e) {
+    console.error('Delete account failed', e);
+    return false;
+  }
+}
+
+function resetLocalProgress() {
+  try { localStorage.removeItem('orbita_save'); } catch(e) {}
+  best = 0;
+  totalGames = 0;
+  totalScoreEver = 0;
+  totalNodesEver = 0;
+  bestComboEver = 0;
+  highestPhase = 1;
+  totalGoldCaptured = 0;
+  achievements = [];
+  unlockedSkins = ['default'];
+  unlockedBgs = ['space'];
+  zenUnlocked = false;
+  selectedSkin = 'default';
+  selectedBg = 'space';
+  // Keep sound/vibration prefs
+  saveData();
+}
+
+async function changeNickname(newName) {
+  if (!sb || !currentUser) return {ok:false, error:'Não logado'};
+  const available = await checkNicknameAvailable(newName);
+  if (!available) return {ok:false, error:'Apelido já em uso!'};
+  try {
+    await sb.from('profiles').update({name: newName}).eq('id', currentUser.id);
+    // Also update the rankings entry
+    await sb.from('rankings').update({name: newName}).eq('user_id', currentUser.id);
+    playerName = newName;
+    return {ok:true};
+  } catch(e) {
+    console.error('Change nickname failed', e);
+    return {ok:false, error:'Erro ao salvar'};
+  }
+}
+
 // Listen to auth state changes
 if (sb) {
   sb.auth.onAuthStateChange(async (event, session) => {
@@ -537,6 +616,9 @@ try {
     bestComboEver = d.bestComboEver || 0;
     highestPhase = d.highestPhase || 1;
     achievements = d.achievements || [];
+    musicVol = d.musicVol !== undefined ? d.musicVol : 0.5;
+    sfxVol = d.sfxVol !== undefined ? d.sfxVol : 0.8;
+    vibrationOn = d.vibrationOn !== undefined ? d.vibrationOn : true;
   }
 } catch(e) {}
 
@@ -546,7 +628,7 @@ function saveData() {
       best, totalGames, muted, selectedSkin, selectedBg,
       unlockedSkins, unlockedBgs, totalGoldCaptured, zenUnlocked,
       totalScoreEver, totalNodesEver, bestComboEver, highestPhase,
-      achievements
+      achievements, musicVol, sfxVol, vibrationOn
     }));
   } catch(e) {}
 }
@@ -886,11 +968,9 @@ function capture(nodeIdx){
   }
 
   sndCapture(pts,combo);
-  if(navigator.vibrate){
-    if(pts>=5)navigator.vibrate([60,30,60,30,80]);
-    else if(pts>=3)navigator.vibrate([30,15,30]);
-    else navigator.vibrate(10);
-  }
+  if(pts>=5)vibrate([60,30,60,30,80]);
+  else if(pts>=3)vibrate([30,15,30]);
+  else vibrate(10);
 
   // Epic gold node animation
   if(n.tier==='gold'){
@@ -938,7 +1018,7 @@ function capture(nodeIdx){
   const newPhase=getPhase();
   if(newPhase>prevPhase&&PHASE_NAMES[newPhase]){
     phaseMsg=PHASE_NAMES[newPhase];phaseMsgT=2.5;sndPhase();
-    if(navigator.vibrate)navigator.vibrate([40,30,40,30,40]);
+    vibrate([40,30,40,30,40]);
   }
 
   // Spawn new branches
@@ -966,7 +1046,7 @@ function die(){
     shakeT=0.2;
     shakeA=8;
     emit(ball.x,ball.y,20,['#00ffff','#ffffff','#80ffff'],1.2);
-    if(navigator.vibrate)navigator.vibrate([30,20,30]);
+    vibrate([30,20,30]);
     if(actx&&!muted){
       playTone(800,0.2,'sine',0.15);
       setTimeout(()=>playTone(1000,0.2,'sine',0.1),100);
@@ -999,7 +1079,7 @@ function die(){
   const finalPhase=getPhase();
   if(finalPhase>highestPhase)highestPhase=finalPhase;
   emit(ball.x,ball.y,30,['#ff6b6b','#ffa502','#e056fd','#70a1ff','#ffffff'],1.5);
-  if(navigator.vibrate)navigator.vibrate(newRec?[80,40,80]:50);
+  vibrate(newRec?[80,40,80]:50);
   totalGames++;
   pendingUnlocks = checkUnlocks();
   pendingAchievements = checkAchievements();
@@ -1048,7 +1128,7 @@ function collectPowerup(p){
     setTimeout(()=>playTone(900,0.15,'triangle',0.1),80);
     setTimeout(()=>playTone(1200,0.2,'sine',0.08),160);
   }
-  if(navigator.vibrate)navigator.vibrate([20,15,20]);
+  vibrate([20,15,20]);
 }
 
 // Pause button area (top right corner)
@@ -1101,7 +1181,7 @@ function handleTap(x, y){
   if(state===ST.MENU){
     for(const b of menuBtnAreas){
       if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
-        b.action();
+        b.action(x,y);
         return;
       }
     }
@@ -1124,18 +1204,33 @@ C.addEventListener('touchstart',e=>{
   const rect=C.getBoundingClientRect();
   handleTap(t.clientX-rect.left, t.clientY-rect.top);
 });
+C.addEventListener('touchmove',e=>{
+  // Handle slider dragging during settings
+  if(state===ST.MENU && menuScreen==='settings'){
+    const t=e.touches[0];
+    const rect=C.getBoundingClientRect();
+    const x = t.clientX-rect.left;
+    const y = t.clientY-rect.top;
+    for(const b of menuBtnAreas){
+      if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h && b.action.length>0){
+        b.action(x,y);
+        return;
+      }
+    }
+  }
+});
 C.addEventListener('mousedown',e=>{
   const rect=C.getBoundingClientRect();
   handleTap(e.clientX-rect.left, e.clientY-rect.top);
 });
 document.addEventListener('keydown',e=>{
-  if(menuScreen==='nickname' && state===ST.MENU){
+  if((menuScreen==='nickname'||menuScreen==='changeNickname') && state===ST.MENU){
     e.preventDefault();
     nicknameError='';
     if(e.key==='Backspace'){
       nicknameBuffer=nicknameBuffer.slice(0,-1);
     } else if(e.key==='Escape'){
-      menuScreen='main';
+      menuScreen=menuScreen==='changeNickname'?'settings':'main';
     } else if(e.key.length===1 && nicknameBuffer.length<16){
       const ch=e.key.toUpperCase();
       if(/[A-Z0-9]/.test(ch))nicknameBuffer+=ch;
@@ -2866,6 +2961,9 @@ function drawMenuUI(){
   else if(menuScreen==='ranking')drawRankingMenu();
   else if(menuScreen==='login')drawLoginScreen();
   else if(menuScreen==='nickname')drawNicknameScreen();
+  else if(menuScreen==='settings')drawSettingsMenu();
+  else if(menuScreen==='changeNickname')drawChangeNicknameScreen();
+  else if(menuScreen==='confirmDelete')drawConfirmDeleteScreen();
 }
 
 function drawMainMenu(){
@@ -2893,9 +2991,9 @@ function drawMainMenu(){
 
   // Buttons
   const btnW=Math.min(W*0.7,260);
-  const btnH=zenUnlocked?38:42;
+  const btnH=zenUnlocked?34:38;
   const btnX=(W-btnW)/2;
-  let btnY=zenUnlocked?H*0.40:H*0.43;
+  let btnY=zenUnlocked?H*0.37:H*0.40;
 
   // PLAY button (highlighted)
   drawMenuButton(btnX,btnY,btnW,btnH,'JOGAR','#00f5d4',true,()=>{
@@ -2938,6 +3036,11 @@ function drawMainMenu(){
       menuScreen='ranking';
       loadRankings();
     }
+  });
+
+  btnY+=btnH+8;
+  drawMenuButton(btnX,btnY,btnW,btnH,'⚙ CONFIGURAÇÕES','#a0a0c0',false,()=>{
+    menuScreen='settings';
   });
 
   // Best score
@@ -3865,6 +3968,453 @@ function drawVirtualKeyboard(){
       }
     });
   }
+}
+
+// ============ SETTINGS SCREENS ============
+function drawSettingsMenu(){
+  X.textAlign='center';X.textBaseline='middle';
+
+  X.fillStyle='#e0e0ff';X.font='bold 28px -apple-system, system-ui, sans-serif';
+  X.shadowColor='#a0a0c0';X.shadowBlur=15;
+  X.fillText('⚙ CONFIGURAÇÕES',W/2,H*0.06);
+  X.shadowBlur=0;
+
+  drawBackBtn();
+
+  let curY = H*0.14;
+  const contentW = Math.min(W*0.85, 320);
+  const contentX = (W-contentW)/2;
+
+  // Account info section
+  if(currentUser){
+    X.fillStyle='#ffd32a';
+    X.font='bold 11px -apple-system, system-ui, sans-serif';
+    X.textAlign='left';
+    X.fillText('CONTA',contentX,curY);
+    curY+=16;
+
+    // Info card
+    X.fillStyle='rgba(0,0,0,0.5)';
+    roundRect(contentX,curY,contentW,50,8);
+    X.fill();
+    X.strokeStyle='rgba(255,211,42,0.3)';
+    X.lineWidth=1;
+    roundRect(contentX,curY,contentW,50,8);
+    X.stroke();
+
+    X.fillStyle='rgba(255,255,255,0.5)';
+    X.font='10px -apple-system, system-ui, sans-serif';
+    X.fillText('Apelido:',contentX+12,curY+14);
+    X.fillStyle='#fff';
+    X.font='bold 14px -apple-system, system-ui, sans-serif';
+    X.fillText(playerName||'(sem apelido)',contentX+12,curY+30);
+
+    // Email
+    if(currentUser.email){
+      X.fillStyle='rgba(255,255,255,0.4)';
+      X.font='9px -apple-system, system-ui, sans-serif';
+      let email = currentUser.email;
+      if(email.length>30) email = email.substring(0,28)+'...';
+      X.fillText(email,contentX+12,curY+44);
+    }
+    curY+=60;
+
+    // Change nickname button
+    drawSettingsBtn(contentX,curY,contentW,'Trocar apelido','✏','#00f5d4',()=>{
+      nicknameBuffer='';
+      nicknameError='';
+      menuScreen='changeNickname';
+    });
+    curY+=44;
+  }
+
+  // Sound section
+  X.fillStyle='#70a1ff';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('ÁUDIO',contentX,curY);
+  curY+=16;
+
+  // Music volume slider
+  drawSlider(contentX,curY,contentW,'Música',musicVol,(v)=>{
+    musicVol=v;
+    if(musicGain && !muted){
+      musicGain.gain.linearRampToValueAtTime(0.12*musicVol, actx.currentTime+0.1);
+    }
+    saveData();
+  });
+  curY+=50;
+
+  // SFX volume slider
+  drawSlider(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{
+    sfxVol=v;
+    saveData();
+    // Play a test tone
+    if(actx && sfxVol>0) playTone(600,0.1,'sine',0.15);
+  });
+  curY+=50;
+
+  // Mute toggle
+  drawToggle(contentX,curY,contentW,'Silenciar tudo',muted,()=>{
+    toggleMute();
+  });
+  curY+=44;
+
+  // Vibration section
+  X.fillStyle='#ffd32a';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('OUTROS',contentX,curY);
+  curY+=16;
+
+  drawToggle(contentX,curY,contentW,'Vibração',vibrationOn,()=>{
+    vibrationOn = !vibrationOn;
+    saveData();
+    if(vibrationOn) vibrate(30);
+  });
+  curY+=44;
+
+  // Reset progress button
+  drawSettingsBtn(contentX,curY,contentW,'Resetar progresso local','↻','#ffa502',()=>{
+    if(confirm('Isso vai apagar suas skins, fundos, conquistas e estatísticas locais. Continuar?')){
+      resetLocalProgress();
+    }
+  });
+  curY+=44;
+
+  // Delete account button (danger)
+  if(currentUser){
+    drawSettingsBtn(contentX,curY,contentW,'EXCLUIR CONTA','⚠','#ff4757',()=>{
+      menuScreen='confirmDelete';
+    });
+    curY+=44;
+  }
+
+  X.textAlign='center';
+}
+
+function drawSettingsBtn(x,y,w,label,icon,color,action){
+  const h=38;
+  X.globalAlpha=0.7;
+  const g=X.createLinearGradient(x,y,x,y+h);
+  g.addColorStop(0,'rgba(0,0,0,0.6)');
+  g.addColorStop(1,'rgba(0,0,0,0.8)');
+  X.fillStyle=g;
+  roundRect(x,y,w,h,8);
+  X.fill();
+  X.strokeStyle=color;
+  X.lineWidth=1.5;
+  roundRect(x,y,w,h,8);
+  X.stroke();
+  X.globalAlpha=1;
+
+  X.fillStyle=color;
+  X.font='bold 16px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.textBaseline='middle';
+  X.fillText(icon,x+14,y+h/2);
+
+  X.fillStyle='#fff';
+  X.font='bold 13px -apple-system, system-ui, sans-serif';
+  X.fillText(label,x+38,y+h/2);
+
+  // Chevron
+  X.fillStyle='rgba(255,255,255,0.4)';
+  X.textAlign='right';
+  X.font='14px -apple-system, system-ui, sans-serif';
+  X.fillText('›',x+w-14,y+h/2-1);
+
+  menuBtnAreas.push({x,y,w,h,action});
+}
+
+function drawSlider(x,y,w,label,value,onChange){
+  const h=44;
+  // Label
+  X.fillStyle='#fff';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.textBaseline='middle';
+  X.fillText(label,x,y+8);
+
+  // Value %
+  X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='10px -apple-system, system-ui, sans-serif';
+  X.textAlign='right';
+  X.fillText(Math.round(value*100)+'%',x+w,y+8);
+
+  // Track
+  const trackY=y+26;
+  const trackH=6;
+  X.fillStyle='rgba(0,0,0,0.5)';
+  roundRect(x,trackY,w,trackH,3);
+  X.fill();
+
+  // Fill
+  const fillW=w*value;
+  if(fillW>0){
+    const g=X.createLinearGradient(x,trackY,x+fillW,trackY);
+    g.addColorStop(0,'#00f5d4');
+    g.addColorStop(1,'#70a1ff');
+    X.fillStyle=g;
+    roundRect(x,trackY,fillW,trackH,3);
+    X.fill();
+  }
+
+  // Knob
+  const knobX=x+fillW;
+  X.shadowColor='#00f5d4';
+  X.shadowBlur=8;
+  X.fillStyle='#fff';
+  X.beginPath();
+  X.arc(knobX,trackY+trackH/2,9,0,Math.PI*2);
+  X.fill();
+  X.shadowBlur=0;
+  X.strokeStyle='#00f5d4';
+  X.lineWidth=2;
+  X.beginPath();
+  X.arc(knobX,trackY+trackH/2,9,0,Math.PI*2);
+  X.stroke();
+
+  // Touch zone (bigger than visual)
+  menuBtnAreas.push({
+    x:x-5, y:trackY-15, w:w+10, h:36,
+    action:(tapX)=>{
+      const newV = clamp((tapX-x)/w, 0, 1);
+      onChange(newV);
+    }
+  });
+}
+
+function drawToggle(x,y,w,label,isOn,action){
+  const h=38;
+  X.fillStyle='rgba(0,0,0,0.5)';
+  roundRect(x,y,w,h,8);
+  X.fill();
+  X.strokeStyle='rgba(255,255,255,0.15)';
+  X.lineWidth=1;
+  roundRect(x,y,w,h,8);
+  X.stroke();
+
+  // Label
+  X.fillStyle='#fff';
+  X.font='bold 13px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.textBaseline='middle';
+  X.fillText(label,x+14,y+h/2);
+
+  // Toggle switch
+  const swW=42, swH=22;
+  const swX=x+w-swW-12;
+  const swY=y+(h-swH)/2;
+
+  X.fillStyle=isOn?'#00f5d4':'rgba(255,255,255,0.15)';
+  roundRect(swX,swY,swW,swH,swH/2);
+  X.fill();
+
+  // Knob
+  const knobX=isOn?swX+swW-swH/2:swX+swH/2;
+  X.fillStyle='#fff';
+  if(isOn){X.shadowColor='#00f5d4';X.shadowBlur=6;}
+  X.beginPath();
+  X.arc(knobX,swY+swH/2,swH/2-3,0,Math.PI*2);
+  X.fill();
+  X.shadowBlur=0;
+
+  menuBtnAreas.push({x,y,w,h,action});
+}
+
+function drawChangeNicknameScreen(){
+  X.textAlign='center';X.textBaseline='middle';
+
+  X.shadowColor='#00f5d4';X.shadowBlur=20;
+  X.fillStyle='#00f5d4';
+  X.font='bold 28px -apple-system, system-ui, sans-serif';
+  X.fillText('TROCAR APELIDO',W/2,H*0.08);
+  X.shadowBlur=0;
+
+  drawBackBtn();
+
+  X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='12px -apple-system, system-ui, sans-serif';
+  X.fillText('Atual: '+playerName,W/2,H*0.17);
+  X.font='10px -apple-system, system-ui, sans-serif';
+  X.fillText('(3-16 caracteres, único)',W/2,H*0.21);
+
+  // Input box
+  const ibW=Math.min(W*0.8,300);
+  const ibH=50;
+  const ibX=(W-ibW)/2;
+  const ibY=H*0.26;
+
+  X.fillStyle='rgba(0,0,0,0.6)';
+  roundRect(ibX,ibY,ibW,ibH,12);
+  X.fill();
+  X.strokeStyle=nicknameError?'#ff6b6b':'#00f5d4';
+  X.lineWidth=2;
+  X.shadowColor=nicknameError?'#ff6b6b':'#00f5d4';
+  X.shadowBlur=12;
+  roundRect(ibX,ibY,ibW,ibH,12);
+  X.stroke();
+  X.shadowBlur=0;
+
+  X.fillStyle='#fff';
+  X.font='bold 20px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';
+  X.textBaseline='middle';
+  const showCursor=Math.floor(menuT*2)%2===0;
+  const displayText=nicknameBuffer+(showCursor?'|':'');
+  X.fillText(displayText||(showCursor?'|':''),W/2,ibY+ibH/2);
+
+  if(nicknameError){
+    X.fillStyle='#ff6b6b';
+    X.font='11px -apple-system, system-ui, sans-serif';
+    X.fillText(nicknameError,W/2,ibY+ibH+14);
+  } else if(nicknameChecking){
+    X.fillStyle='#ffd32a';
+    X.font='11px -apple-system, system-ui, sans-serif';
+    X.fillText('Verificando...',W/2,ibY+ibH+14);
+  }
+
+  // Confirm button
+  const btnW=Math.min(W*0.7,260);
+  const btnH=46;
+  const btnX=(W-btnW)/2;
+  const btnY=ibY+ibH+32;
+
+  const canConfirm=nicknameBuffer.trim().length>=3 && nicknameBuffer.trim()!==playerName && !nicknameChecking;
+  X.globalAlpha=canConfirm?1:0.4;
+  const g=X.createLinearGradient(btnX,btnY,btnX,btnY+btnH);
+  g.addColorStop(0,canConfirm?'#00f5d4':'rgba(0,0,0,0.4)');
+  g.addColorStop(1,'rgba(0,0,0,0.6)');
+  X.fillStyle=g;
+  roundRect(btnX,btnY,btnW,btnH,12);
+  X.fill();
+  X.strokeStyle='#00f5d4';
+  X.lineWidth=2;
+  if(canConfirm){X.shadowColor='#00f5d4';X.shadowBlur=12;}
+  roundRect(btnX,btnY,btnW,btnH,12);
+  X.stroke();
+  X.shadowBlur=0;
+  X.fillStyle='#fff';
+  X.font='bold 16px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';X.textBaseline='middle';
+  X.fillText('SALVAR',btnX+btnW/2,btnY+btnH/2);
+  X.globalAlpha=1;
+
+  if(canConfirm){
+    menuBtnAreas.push({
+      x:btnX,y:btnY,w:btnW,h:btnH,
+      action:async ()=>{
+        const name=nicknameBuffer.trim();
+        nicknameChecking=true;
+        nicknameError='';
+        const result=await changeNickname(name);
+        if(result.ok){
+          menuScreen='settings';
+        } else {
+          nicknameError=result.error;
+        }
+        nicknameChecking=false;
+      }
+    });
+  }
+
+  // Virtual keyboard
+  drawVirtualKeyboard();
+}
+
+function drawConfirmDeleteScreen(){
+  X.textAlign='center';X.textBaseline='middle';
+
+  // Dim background
+  X.globalAlpha=0.5;
+  X.fillStyle='#000';
+  X.fillRect(-10,-10,W+20,H+20);
+  X.globalAlpha=1;
+
+  // Card
+  const cardW=Math.min(W*0.85,340);
+  const cardH=300;
+  const cardX=(W-cardW)/2;
+  const cardY=(H-cardH)/2;
+
+  X.fillStyle='rgba(15,10,25,0.95)';
+  roundRect(cardX,cardY,cardW,cardH,16);
+  X.fill();
+  X.strokeStyle='#ff4757';
+  X.lineWidth=2;
+  X.shadowColor='#ff4757';
+  X.shadowBlur=20;
+  roundRect(cardX,cardY,cardW,cardH,16);
+  X.stroke();
+  X.shadowBlur=0;
+
+  // Warning icon
+  X.fillStyle='#ff4757';
+  X.font='48px sans-serif';
+  X.fillText('⚠',W/2,cardY+55);
+
+  // Title
+  X.fillStyle='#ff4757';
+  X.font='bold 22px -apple-system, system-ui, sans-serif';
+  X.fillText('EXCLUIR CONTA?',W/2,cardY+100);
+
+  // Description
+  X.fillStyle='rgba(255,255,255,0.75)';
+  X.font='12px -apple-system, system-ui, sans-serif';
+  X.fillText('Essa ação vai apagar:',W/2,cardY+130);
+  X.fillStyle='rgba(255,255,255,0.6)';
+  X.font='11px -apple-system, system-ui, sans-serif';
+  X.fillText('• Seu apelido do ranking',W/2,cardY+150);
+  X.fillText('• Sua pontuação global',W/2,cardY+166);
+  X.fillText('• Seu progresso local',W/2,cardY+182);
+  X.fillStyle='#ff6b6b';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.fillText('Essa ação NÃO pode ser desfeita!',W/2,cardY+205);
+
+  // Buttons
+  const btnW=(cardW-48)/2;
+  const btnH=42;
+  const btnsY=cardY+cardH-62;
+
+  // Cancel button
+  const cx1=cardX+16;
+  X.fillStyle='rgba(0,0,0,0.5)';
+  roundRect(cx1,btnsY,btnW,btnH,10);
+  X.fill();
+  X.strokeStyle='#888';
+  X.lineWidth=1.5;
+  roundRect(cx1,btnsY,btnW,btnH,10);
+  X.stroke();
+  X.fillStyle='#aaa';
+  X.font='bold 14px -apple-system, system-ui, sans-serif';
+  X.fillText('CANCELAR',cx1+btnW/2,btnsY+btnH/2);
+  menuBtnAreas.push({
+    x:cx1,y:btnsY,w:btnW,h:btnH,
+    action:()=>{menuScreen='settings';}
+  });
+
+  // Delete button
+  const cx2=cardX+32+btnW;
+  X.fillStyle='#ff4757';
+  roundRect(cx2,btnsY,btnW,btnH,10);
+  X.fill();
+  X.strokeStyle='#ff4757';
+  X.lineWidth=2;
+  X.shadowColor='#ff4757';
+  X.shadowBlur=10;
+  roundRect(cx2,btnsY,btnW,btnH,10);
+  X.stroke();
+  X.shadowBlur=0;
+  X.fillStyle='#fff';
+  X.font='bold 13px -apple-system, system-ui, sans-serif';
+  X.fillText('EXCLUIR',cx2+btnW/2,btnsY+btnH/2);
+  menuBtnAreas.push({
+    x:cx2,y:btnsY,w:btnW,h:btnH,
+    action:async ()=>{
+      await deleteAccount();
+    }
+  });
 }
 
 function drawDeadUI(){

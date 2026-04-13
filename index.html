@@ -243,13 +243,21 @@ const SUPABASE_URL = 'https://poedjpfrwpdsdjjjduow.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvZWRqcGZyd3Bkc2RqampkdW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTgyNTksImV4cCI6MjA5MTU5NDI1OX0.6D0p4m9QPBPSlICDEMb2Y8umJpETbQ3FpInfwmpN-9o';
 
 let sb = null;
-if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-  try {
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  } catch(e) { console.error('Supabase init failed', e); }
-} else {
-  console.error('Supabase SDK not loaded');
+function initSupabase() {
+  if (sb) return sb;
+  if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log('[Orbita] Supabase client created');
+    } catch(e) {
+      console.error('[Orbita] Supabase init failed', e);
+    }
+  } else {
+    console.warn('[Orbita] Supabase SDK not available yet');
+  }
+  return sb;
 }
+initSupabase();
 
 // Auth state
 let currentUser = null;
@@ -269,17 +277,34 @@ let lastSubmittedScore = 0;
 
 // Initialize auth on load
 async function initAuth() {
+  // Try to initialize Supabase if not yet done
+  if (!sb) initSupabase();
+
+  console.log('[Orbita] initAuth starting. SDK available:', !!sb);
+
   if (!sb) {
-    // SDK didn't load - skip auth, go straight to main (offline mode)
+    console.warn('[Orbita] No Supabase SDK - offline mode');
     authLoading = false;
     menuScreen = 'main';
     return;
   }
+
+  // Safety timeout - if auth check takes more than 5 seconds, go to login
+  const timeoutId = setTimeout(() => {
+    console.warn('[Orbita] Auth check timeout');
+    if (authLoading) {
+      authLoading = false;
+      menuScreen = 'login';
+    }
+  }, 5000);
+
   try {
     const { data: { session } } = await sb.auth.getSession();
+    console.log('[Orbita] Session:', !!session);
     if (session && session.user) {
       currentUser = session.user;
       await loadProfile();
+      console.log('[Orbita] Profile loaded. playerName:', playerName, 'needsNickname:', needsNickname);
       if (playerName && !needsNickname) {
         menuScreen = 'main';
       } else {
@@ -289,10 +314,12 @@ async function initAuth() {
       menuScreen = 'login';
     }
   } catch(e) {
-    console.error('Auth init failed', e);
+    console.error('[Orbita] Auth init failed', e);
     menuScreen = 'login';
   }
+  clearTimeout(timeoutId);
   authLoading = false;
+  console.log('[Orbita] initAuth done. Screen:', menuScreen);
 }
 
 async function loadProfile() {
@@ -520,7 +547,14 @@ if (sb) {
   });
 }
 
-initAuth();
+// Wait for DOM and SDK before initializing auth
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initAuth, 100);
+  });
+} else {
+  setTimeout(initAuth, 100);
+}
 
 // ============ ACHIEVEMENTS ============
 const ACHIEVEMENTS = {

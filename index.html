@@ -219,7 +219,7 @@ let selectedBg='space';
 let unlockedSkins=['default'];
 let unlockedBgs=['space'];
 let totalGoldCaptured=0;
-let menuScreen='login'; // starts at login
+let menuScreen='loading'; // starts loading, then login or main
 let zenMode=false;
 let zenUnlocked=false;
 // Stats
@@ -2954,7 +2954,8 @@ function drawTutorial(){
 
 function drawMenuUI(){
   menuBtnAreas = [];
-  if(menuScreen==='main')drawMainMenu();
+  if(menuScreen==='loading')drawLoadingScreen();
+  else if(menuScreen==='main')drawMainMenu();
   else if(menuScreen==='skins')drawSkinsMenu();
   else if(menuScreen==='backgrounds')drawBackgroundsMenu();
   else if(menuScreen==='stats')drawStatsMenu();
@@ -3669,6 +3670,57 @@ function drawRankingMenu(){
     X.fillText('Você não está no top 50 ainda',W/2,H*0.96);
     X.globalAlpha=1;
   }
+}
+
+function drawLoadingScreen(){
+  X.textAlign='center';X.textBaseline='middle';
+
+  // Big title
+  X.shadowColor='#b0b0ff';X.shadowBlur=30;
+  X.fillStyle='#e0e0ff';
+  X.font='bold 54px -apple-system, system-ui, sans-serif';
+  X.fillText('ÓRBITA',W/2,H*0.4);
+  X.shadowBlur=0;
+
+  // Animated ball orbiting
+  const orbR=40;
+  const cx=W/2, cy=H*0.55;
+  const ang=menuT*3;
+
+  // Center dot
+  X.fillStyle='rgba(255,255,255,0.4)';
+  X.beginPath();
+  X.arc(cx,cy,3,0,Math.PI*2);
+  X.fill();
+
+  // Orbit trail
+  for(let i=0;i<8;i++){
+    const a=ang-i*0.15;
+    const alpha=(8-i)/8*0.6;
+    X.globalAlpha=alpha;
+    X.fillStyle='#00f5d4';
+    X.beginPath();
+    X.arc(cx+Math.cos(a)*orbR,cy+Math.sin(a)*orbR,4-i*0.3,0,Math.PI*2);
+    X.fill();
+  }
+  X.globalAlpha=1;
+
+  // Ball
+  const bx=cx+Math.cos(ang)*orbR;
+  const by=cy+Math.sin(ang)*orbR;
+  X.shadowColor='#00f5d4';
+  X.shadowBlur=10;
+  X.fillStyle='#fff';
+  X.beginPath();
+  X.arc(bx,by,6,0,Math.PI*2);
+  X.fill();
+  X.shadowBlur=0;
+
+  // Loading text
+  X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='12px -apple-system, system-ui, sans-serif';
+  const dots='.'.repeat(Math.floor(menuT*2)%4);
+  X.fillText('Carregando'+dots,W/2,H*0.68);
 }
 
 function drawLoginScreen(){

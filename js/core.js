@@ -17,7 +17,7 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ============ AUDIO ============
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const MUSIC_BASE_GAIN = 0.25;
+const MUSIC_BASE_GAIN = 0.90;
 let actx = null;
 let musicSceneLevel = 0.75;
 function getMusicTargetGain(sceneLevel = musicSceneLevel) {

@@ -1250,14 +1250,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(0.72);
+    setMusicVolume(0.12);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.90);
+    setMusicVolume(0.08);
   });
 }
 
@@ -2721,19 +2721,18 @@ function drawSettingsMenu(){
   const contentW = Math.min(W*0.85, 320);
   const contentX = (W-contentW)/2;
 
-  // Account info section
-  if(currentUser){
-    X.fillStyle='#ffd32a';
-    X.font='bold 11px -apple-system, system-ui, sans-serif';
-    X.textAlign='left';
-    X.fillText('CONTA',contentX,curY);
-    curY+=16;
+  // Conta
+  X.fillStyle='#ff6b9d';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('CONTA',contentX,curY);
+  curY+=16;
 
-    // Info card
+  if(currentUser){
     X.fillStyle='rgba(0,0,0,0.5)';
     roundRect(contentX,curY,contentW,50,8);
     X.fill();
-    X.strokeStyle='rgba(255,211,42,0.3)';
+    X.strokeStyle='rgba(255,107,157,0.35)';
     X.lineWidth=1;
     roundRect(contentX,curY,contentW,50,8);
     X.stroke();
@@ -2741,11 +2740,11 @@ function drawSettingsMenu(){
     X.fillStyle='rgba(255,255,255,0.5)';
     X.font='10px -apple-system, system-ui, sans-serif';
     X.fillText('Apelido:',contentX+12,curY+14);
+
     X.fillStyle='#fff';
     X.font='bold 14px -apple-system, system-ui, sans-serif';
     X.fillText(playerName||'(sem apelido)',contentX+12,curY+30);
 
-    // Email
     if(currentUser.email){
       X.fillStyle='rgba(255,255,255,0.4)';
       X.font='9px -apple-system, system-ui, sans-serif';
@@ -2755,65 +2754,58 @@ function drawSettingsMenu(){
     }
     curY+=60;
 
-    // Change nickname button
     drawSettingsBtn(contentX,curY,contentW,'Trocar apelido','✏','#00f5d4',()=>{
       nicknameBuffer='';
       nicknameError='';
       menuScreen='changeNickname';
     });
     curY+=44;
+
+    drawSettingsBtn(contentX,curY,contentW,'Sair da conta','↩','#ff6b6b',()=>{
+      signOut();
+    });
+    curY+=44;
+  } else {
+    drawSettingsBtn(contentX,curY,contentW,'Entrar com Google','🌐','#00f5d4',()=>{
+      signInWithGoogle();
+    });
+    curY+=44;
   }
 
-  // Sound section
+  // Áudio
   X.fillStyle='#70a1ff';
   X.font='bold 11px -apple-system, system-ui, sans-serif';
   X.textAlign='left';
   X.fillText('ÁUDIO',contentX,curY);
   curY+=16;
 
-  // Music volume slider
   drawSlider(contentX,curY,contentW,'Música',musicVol,(v)=>{
     musicVol=v;
-    setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.66);
+    setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.90);
     saveData();
   });
   curY+=50;
 
-  // SFX volume slider
   drawSlider(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{
     sfxVol=v;
     saveData();
-    // Play a test tone
     if(actx && sfxVol>0) playTone(600,0.1,'sine',0.15);
   });
   curY+=50;
 
-  // Mute toggle
   drawToggle(contentX,curY,contentW,'Silenciar tudo',muted,()=>{
     toggleMute();
   });
   curY+=44;
-
-  // Vibration section
-  X.fillStyle='#ffd32a';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('OUTROS',contentX,curY);
-  curY+=16;
 
   drawToggle(contentX,curY,contentW,'Vibração',vibrationOn,()=>{
     vibrationOn = !vibrationOn;
     saveData();
     if(vibrationOn) vibrate(30);
   });
-  curY+=44;
+  curY+=52;
 
-  X.fillStyle='#ff9f43';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('REDE',contentX,curY);
-  curY+=16;
-
+  // Rede (sem título)
   X.fillStyle='rgba(0,0,0,0.5)';
   roundRect(contentX,curY,contentW,42,8);
   X.fill();
@@ -2829,27 +2821,20 @@ function drawSettingsMenu(){
   X.fillText((typeof hasPendingScoreSubmission === 'function' && hasPendingScoreSubmission())?'Seu melhor score será enviado quando voltar a internet.':'Ranking e login sincronizam quando houver conexão.',contentX+12,curY+29);
   curY+=52;
 
-  // App / install section
-  X.fillStyle='#7bed9f';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('APP',contentX,curY);
-  curY+=16;
-
+  // Instalação (sem título)
   if(!isStandaloneApp && (canInstallApp || canShowIosInstallHelp)){
     drawSettingsBtn(contentX,curY,contentW,canInstallApp?'Instalar app':'Como instalar no iPhone','⬇','#7bed9f',()=>{
       promptInstallApp();
     });
     curY+=44;
+
+    X.fillStyle='rgba(255,255,255,0.45)';
+    X.font='10px -apple-system, system-ui, sans-serif';
+    X.textAlign='left';
+    X.fillText(pwaStatusText||'Abra no navegador do celular para instalar',contentX,curY+4);
+    curY+=24;
   }
 
-  X.fillStyle='rgba(255,255,255,0.45)';
-  X.font='10px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText(pwaStatusText||'Abra no navegador do celular para instalar',contentX,curY+4);
-  curY+=24;
-
-  // Reset progress button
   drawSettingsBtn(contentX,curY,contentW,'Resetar progresso local','↻','#ffa502',()=>{
     if(confirm('Isso vai apagar suas skins, fundos, conquistas e estatísticas locais. Continuar?')){
       resetLocalProgress();
@@ -2857,7 +2842,6 @@ function drawSettingsMenu(){
   });
   curY+=44;
 
-  // Delete account button (danger)
   if(currentUser){
     drawSettingsBtn(contentX,curY,contentW,'EXCLUIR CONTA','⚠','#ff4757',()=>{
       menuScreen='confirmDelete';
@@ -3452,7 +3436,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.90);
+        setMusicVolume(0.08);
       });
     } else {
       // Smaller menu btn alongside
@@ -3461,7 +3445,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.90);
+        setMusicVolume(0.08);
       });
     }
   }

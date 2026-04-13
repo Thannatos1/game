@@ -1544,14 +1544,14 @@ function drawMainMenu(){
   // Buttons
   const btnW=Math.min(W*0.7,260);
   const isFirstSession = totalGames===0 && best===0;
+  const metaUnlocked = totalGames>=3 || best>=10;
   const btnH=isFirstSession?46:(zenUnlocked?34:38);
   const btnX=(W-btnW)/2;
   let btnY=isFirstSession?H*0.44:(zenUnlocked?H*0.37:H*0.40);
 
   // PLAY button (highlighted)
   drawMenuButton(btnX,btnY,btnW,btnH,'JOGAR','#00f5d4',true,()=>{
-    zenMode=false;
-    reset();state=ST.PLAY;setMusicVolume(0.12);
+    startRun(false,'menu_play');
   });
 
   if(isFirstSession){
@@ -1572,13 +1572,32 @@ function drawMainMenu(){
 
   btnY+=btnH+8;
 
-  // ZEN MODE button (only if unlocked)
-  if(zenUnlocked){
-    drawMenuButton(btnX,btnY,btnW,btnH,'☯ MODO ZEN','#7bed9f',false,()=>{
-      zenMode=true;
-      reset();state=ST.PLAY;setMusicVolume(0.10);
+  if(!metaUnlocked){
+    X.fillStyle='rgba(255,255,255,0.45)';
+    X.font='12px -apple-system, system-ui, sans-serif';
+    X.textAlign='center';
+    X.fillText('Continue jogando para abrir ranking, skins e fundos.',W/2,btnY+8);
+    X.fillStyle='rgba(255,255,255,0.3)';
+    X.font='10px -apple-system, system-ui, sans-serif';
+    X.fillText('Libera com 3 partidas ou recorde 10.',W/2,btnY+24);
+
+    btnY+=36;
+    drawMenuButton(btnX,btnY,btnW,btnH,'ESTATÍSTICAS','#ffd32a',false,()=>{
+      menuScreen='stats';
     });
+
     btnY+=btnH+8;
+    drawMenuButton(btnX,btnY,btnW,btnH,'⚙ CONFIGURAÇÕES','#a0a0c0',false,()=>{
+      menuScreen='settings';
+    });
+
+    if(best>0){
+      X.fillStyle='rgba(255,255,255,0.4)';
+      X.font='14px -apple-system, system-ui, sans-serif';
+      X.textAlign='center';X.textBaseline='middle';
+      X.fillText('RECORDE: '+best,W/2,H*0.92);
+    }
+    return;
   }
 
   drawMenuButton(btnX,btnY,btnW,btnH,'🌍 RANKING GLOBAL','#ff6b9d',false,()=>{
@@ -1611,6 +1630,14 @@ function drawMainMenu(){
   drawMenuButton(btnX,btnY,btnW,btnH,'⚙ CONFIGURAÇÕES','#a0a0c0',false,()=>{
     menuScreen='settings';
   });
+
+  // ZEN MODE button (kept secondary even when unlocked)
+  if(zenUnlocked){
+    btnY+=btnH+8;
+    drawMenuButton(btnX,btnY,btnW,btnH,'☯ MODO ZEN','#7bed9f',false,()=>{
+      startRun(true,'menu_zen');
+    });
+  }
 
   // Best score
   if(best>0){
@@ -2427,7 +2454,7 @@ function drawNicknameScreen(){
   } else if(nicknameChecking){
     X.fillStyle='#ffd32a';
     X.font='11px -apple-system, system-ui, sans-serif';
-    X.fillText('Verificando...',W/2,ibY+ibH+14);
+    X.fillText(nicknameStatusText || 'Salvando...',W/2,ibY+ibH+14);
   }
 
   // Sign out button (top)
@@ -2481,24 +2508,18 @@ function drawNicknameScreen(){
       action:async ()=>{
         const name=nicknameBuffer.trim();
         nicknameChecking=true;
+        nicknameStatusText='Salvando...';
         nicknameError='';
-        const available=await checkNicknameAvailable(name);
-        if(!available){
-          nicknameError='Apelido já em uso!';
-          nicknameChecking=false;
-          return;
-        }
         const saved=await saveNickname(name);
         if(saved){
           if(best>=5){
             lastSubmittedScore=best;
-            await submitScore(best,selectedSkin);
+            submitScore(best,selectedSkin);
           }
           menuScreen='main';
-        } else {
-          nicknameError='Erro ao salvar';
         }
         nicknameChecking=false;
+        nicknameStatusText='';
       }
     });
   }
@@ -2892,7 +2913,7 @@ function drawChangeNicknameScreen(){
   } else if(nicknameChecking){
     X.fillStyle='#ffd32a';
     X.font='11px -apple-system, system-ui, sans-serif';
-    X.fillText('Verificando...',W/2,ibY+ibH+14);
+    X.fillText(nicknameStatusText || 'Salvando...',W/2,ibY+ibH+14);
   }
 
   // Confirm button
@@ -2927,6 +2948,7 @@ function drawChangeNicknameScreen(){
       action:async ()=>{
         const name=nicknameBuffer.trim();
         nicknameChecking=true;
+        nicknameStatusText='Salvando...';
         nicknameError='';
         const result=await changeNickname(name);
         if(result.ok){
@@ -2935,6 +2957,7 @@ function drawChangeNicknameScreen(){
           nicknameError=result.error;
         }
         nicknameChecking=false;
+        nicknameStatusText='';
       }
     });
   }
@@ -3225,8 +3248,7 @@ function drawDeadUI(){
     const btnY1 = hasUnlock ? H*0.86 : H*0.79;
 
     drawActionBtn(btnX,btnY1,btnW,btnH,'JOGAR DE NOVO','#00f5d4',true,()=>{
-      pendingUnlocks=[];
-      reset();state=ST.PLAY;setMusicVolume(zenMode?0.10:0.12);
+      quickRestartGame('death_button');
     });
 
     if(!hasUnlock){

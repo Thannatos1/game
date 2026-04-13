@@ -37,3 +37,8 @@ Abra via servidor estático (por exemplo, VS Code Live Server, `python -m http.s
 - late game com menos mecânicas simultâneas
 - power-ups com pesos por fase
 - feedback de combo e nó dourado reforçado
+
+
+## Prioridade baixa aplicada
+- Menu com exposição tardia de ranking, skins e fundos até o jogador ganhar ritmo.
+- Modo Zen movido para uma posição mais secundária no menu.

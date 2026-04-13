@@ -318,6 +318,9 @@ function capture(nodeIdx){
   // Epic gold node animation
   if(n.tier==='gold'){
     totalGoldCaptured++;
+    if (typeof trackEvent === 'function') {
+      trackEvent('gold_capture', { score, combo, phase: getPhase(), mode: zenMode ? 'zen' : 'normal' });
+    }
     addScorePopup(n.x,n.y-78,'OURO!','#ffd32a');
     goldFlashT=1.0;
     goldZoomT=1.0;
@@ -363,6 +366,9 @@ function capture(nodeIdx){
   if(newPhase>prevPhase&&PHASE_NAMES[newPhase]){
     phaseMsg=PHASE_NAMES[newPhase];phaseMsgT=2.5;sndPhase();
     vibrate([40,30,40,30,40]);
+    if (typeof trackEvent === 'function') {
+      trackEvent('phase_reached', { phase: newPhase, score, combo, mode: zenMode ? 'zen' : 'normal' });
+    }
   }
 
   // Spawn new branches
@@ -425,6 +431,13 @@ function die(){
   emit(ball.x,ball.y,30,['#ff6b6b','#ffa502','#e056fd','#70a1ff','#ffffff'],1.5);
   vibrate(newRec?[80,40,80]:50);
   totalGames++;
+  if (typeof trackEvent === 'function') {
+    trackEvent('game_over', { score, phase: finalPhase, max_combo: maxCombo, new_record: !!newRec, mode: zenMode ? 'zen' : 'normal' }, { urgent: true });
+    if (newRec) {
+      trackEvent('new_record', { score, phase: finalPhase, max_combo: maxCombo, mode: zenMode ? 'zen' : 'normal' }, { urgent: true });
+    }
+    flushAnalyticsQueue(true);
+  }
   pendingUnlocks = checkUnlocks();
   pendingAchievements = checkAchievements();
   pendingUnlocks = pendingUnlocks.concat(pendingAchievements);
@@ -474,6 +487,9 @@ function spawnPowerup(){
 }
 
 function collectPowerup(p){
+  if (typeof trackEvent === 'function') {
+    trackEvent('powerup_collected', { type: p.type, score, phase: getPhase(), mode: zenMode ? 'zen' : 'normal' });
+  }
   if(p.type==='shield'){
     activeShield=true;
     emit(p.x,p.y,15,['#00ffff','#80ffff','#ffffff'],1);
@@ -515,13 +531,20 @@ function shouldShowAssistGuides(){
   return tutorialStep>0 || totalGames<1;
 }
 
-function quickRestartGame(){
-  const keepZen = zenMode;
+function startRun(useZen, source='unknown'){
+  zenMode = !!useZen;
   pendingUnlocks = [];
   reset();
-  zenMode = keepZen;
   state = ST.PLAY;
-  setMusicVolume(keepZen?0.10:0.12);
+  setMusicVolume(zenMode?0.10:0.12);
+  if (typeof trackEvent === 'function') {
+    trackEvent('game_start', { mode: zenMode ? 'zen' : 'normal', source, best, unlocked_skins: unlockedSkins.length, unlocked_bgs: unlockedBgs.length });
+  }
+}
+
+function quickRestartGame(source='retry'){
+  const keepZen = zenMode;
+  startRun(keepZen, source);
 }
 
 function handleTap(x, y){
@@ -583,8 +606,8 @@ function handleTap(x, y){
 function handleInput(){
   // Backwards compat for keyboard - only works during play
   if(state===ST.PLAY)release();
-  else if(state===ST.MENU&&menuScreen==='main'){reset();state=ST.PLAY;setMusicVolume(0.12);}
-  else if(state===ST.DEAD&&deathT>0.6){quickRestartGame();}
+  else if(state===ST.MENU&&menuScreen==='main'){startRun(false,'keyboard_menu');}
+  else if(state===ST.DEAD&&deathT>0.6){quickRestartGame('keyboard_retry');}
 }
 
 C.addEventListener('touchstart',e=>{

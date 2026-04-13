@@ -49,12 +49,12 @@ async function initAuth() {
     return;
   }
 
-  // Safety timeout - if auth check takes more than 5 seconds, go to login
+  // Safety timeout - if auth check takes more than 5 seconds, go to main
   const timeoutId = setTimeout(() => {
     console.warn('[Orbita] Auth check timeout');
     if (authLoading) {
       authLoading = false;
-      menuScreen = 'login';
+      menuScreen = 'main';
     }
   }, 5000);
 
@@ -71,11 +71,11 @@ async function initAuth() {
         menuScreen = 'nickname';
       }
     } else {
-      menuScreen = 'login';
+      menuScreen = 'main';
     }
   } catch(e) {
     console.error('[Orbita] Auth init failed', e);
-    menuScreen = 'login';
+    menuScreen = 'main';
   }
   clearTimeout(timeoutId);
   authLoading = false;

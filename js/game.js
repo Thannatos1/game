@@ -121,9 +121,9 @@ function placeBranch(fromNode, tier, angleOffset) {
   } while(attempts<25 && isTooClose(nx,ny,150));
 
   const phase = getPhase();
-  const isMoving = !zenMode && phase>=5 && tier!=='easy' && Math.random()<0.4;
-  const isDisappearing = !zenMode && phase>=5 && tier==='hard' && Math.random()<0.3;
-  const isTeleporting = !zenMode && phase>=6 && tier!=='easy' && Math.random()<0.5;
+  const isMoving = !zenMode && phase>=5 && tier!=='easy' && Math.random()<0.28;
+  const isDisappearing = !zenMode && phase>=5 && tier==='hard' && !isMoving && Math.random()<0.18;
+  const isTeleporting = !zenMode && phase>=6 && tier!=='easy' && !isMoving && !isDisappearing && Math.random()<0.22;
 
   return {
     x:nx, y:ny, baseX:nx, baseY:ny,
@@ -179,9 +179,9 @@ function spawnBranches(fromNode, groupId) {
   // Spawn asteroids for phase 4+ (not in zen)
   if (phase >= 4 && !zenMode) {
     for (const b of branches) {
-      if (b.tier !== 'easy' && Math.random()<0.5) {
+      if (b.tier !== 'easy' && Math.random() < ((b.moving || b.disappearing || b.teleporting) ? 0.2 : 0.4)) {
         const mx = (fromNode.x+b.x)/2, my = (fromNode.y+b.y)/2;
-        const na = 1+Math.floor(Math.random()*2);
+        const na = Math.random() < 0.7 ? 1 : 2;
         for(let i=0;i<na;i++){
           asteroids.push({
             x:mx+rand(-50,50), y:my+rand(-50,50),
@@ -304,6 +304,11 @@ function capture(nodeIdx){
   if(combo>=3){
     addScorePopup(n.x,n.y-55,'COMBO '+combo+'!',combo>=5?'#ffd32a':'#00f5d4');
   }
+  if(combo>=5){
+    flashA=Math.max(flashA,0.12);
+    shakeT=Math.max(shakeT,0.08);
+    shakeA=Math.max(shakeA,4);
+  }
 
   sndCapture(pts,combo);
   if(pts>=5)vibrate([60,30,60,30,80]);
@@ -313,6 +318,7 @@ function capture(nodeIdx){
   // Epic gold node animation
   if(n.tier==='gold'){
     totalGoldCaptured++;
+    addScorePopup(n.x,n.y-78,'OURO!','#ffd32a');
     goldFlashT=1.0;
     goldZoomT=1.0;
     shakeT=0.4;
@@ -426,6 +432,24 @@ function die(){
   setMusicVolume(0.05);
 }
 
+function choosePowerupType(){
+  const phase=getPhase();
+  const r=Math.random();
+  if(phase<=3){
+    if(r<0.55)return 'shield';
+    if(r<0.85)return 'slowmo';
+    return 'magnet';
+  }
+  if(phase<=5){
+    if(r<0.35)return 'shield';
+    if(r<0.70)return 'slowmo';
+    return 'magnet';
+  }
+  if(r<0.25)return 'shield';
+  if(r<0.55)return 'slowmo';
+  return 'magnet';
+}
+
 function spawnPowerup(){
   // Pick a position ahead of the current node
   const cn=nodes[ball.currentNode];
@@ -440,8 +464,7 @@ function spawnPowerup(){
   const mx=(cn.x+target.x)/2+rand(-50,50);
   const my=(cn.y+target.y)/2+rand(-50,50);
 
-  const types=['shield','slowmo','magnet'];
-  const type=types[Math.floor(Math.random()*types.length)];
+  const type=choosePowerupType();
 
   powerups.push({
     x:mx, y:my, type, life:12,
@@ -488,6 +511,19 @@ function isMuteBtnTap(x, y) {
 // Menu button areas
 let menuBtnAreas = [];
 
+function shouldShowAssistGuides(){
+  return tutorialStep>0 || totalGames<1;
+}
+
+function quickRestartGame(){
+  const keepZen = zenMode;
+  pendingUnlocks = [];
+  reset();
+  zenMode = keepZen;
+  state = ST.PLAY;
+  setMusicVolume(keepZen?0.10:0.12);
+}
+
 function handleTap(x, y){
   initAudio();
 
@@ -504,13 +540,27 @@ function handleTap(x, y){
     return;
   }
 
-  // Pause and Dead screens use buttons
-  if(state===ST.PAUSE || state===ST.DEAD){
+  // Pause screen uses buttons
+  if(state===ST.PAUSE){
     for(const b of menuBtnAreas){
       if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
         b.action();
         return;
       }
+    }
+    return;
+  }
+
+  // Dead screen: buttons first, otherwise tap anywhere to retry
+  if(state===ST.DEAD){
+    for(const b of menuBtnAreas){
+      if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
+        b.action();
+        return;
+      }
+    }
+    if(deathT>0.55){
+      quickRestartGame();
     }
     return;
   }
@@ -534,7 +584,7 @@ function handleInput(){
   // Backwards compat for keyboard - only works during play
   if(state===ST.PLAY)release();
   else if(state===ST.MENU&&menuScreen==='main'){reset();state=ST.PLAY;setMusicVolume(0.12);}
-  else if(state===ST.DEAD&&deathT>0.6){reset();state=ST.PLAY;setMusicVolume(0.12);}
+  else if(state===ST.DEAD&&deathT>0.6){quickRestartGame();}
 }
 
 C.addEventListener('touchstart',e=>{

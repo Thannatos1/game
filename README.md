@@ -11,7 +11,7 @@ Baseado diretamente no arquivo original enviado pelo usuário, preservando o com
 - `js/render.js`
 - `js/main.js`
 
-## Correções mínimas aplicadas
+## Correções de prioridade alta e média aplicadas
 1. Corrigido crash de render em skins com acessórios que usavam a variável `r` fora de escopo.
 2. Corrigida contagem duplicada de partidas (`totalGames`) ao iniciar/reiniciar.
 3. `devicePixelRatio` passa a ser recalculado em `resize()`.
@@ -27,3 +27,13 @@ Baseado diretamente no arquivo original enviado pelo usuário, preservando o com
 
 ## Observação
 Abra via servidor estático (por exemplo, VS Code Live Server, `python -m http.server`, etc.).
+
+
+## Ajustes de retenção aplicados
+- primeira sessão mais limpa, focada em `JOGAR`
+- login não bloqueia a primeira partida
+- replay rápido com toque em qualquer lugar na tela de morte
+- guias visuais só no onboarding/início
+- late game com menos mecânicas simultâneas
+- power-ups com pesos por fase
+- feedback de combo e nó dourado reforçado

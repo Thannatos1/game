@@ -246,7 +246,7 @@ function draw(){
   }
 
   // Trajectory prediction line - shows where ball will fly if released now
-  if(state===ST.PLAY&&ball.orbiting){
+  if(state===ST.PLAY&&ball.orbiting&&shouldShowAssistGuides()){
     const tang=ball.angle+(ball.orbitDir*Math.PI/2);
     const bx=ball.x-cam.x,by=ball.y-cam.y;
     const dx=Math.cos(tang),dy=Math.sin(tang);
@@ -309,7 +309,7 @@ function draw(){
   }
 
   // Direction arrow hint (toward nearest uncaptured node)
-  if(state===ST.PLAY&&ball.orbiting){
+  if(state===ST.PLAY&&ball.orbiting&&shouldShowAssistGuides()){
     let closest=null,closestD=Infinity;
     for(const n of nodes){
       if(n.captured||!n.visible)continue;
@@ -1543,15 +1543,32 @@ function drawMainMenu(){
 
   // Buttons
   const btnW=Math.min(W*0.7,260);
-  const btnH=zenUnlocked?34:38;
+  const isFirstSession = totalGames===0 && best===0;
+  const btnH=isFirstSession?46:(zenUnlocked?34:38);
   const btnX=(W-btnW)/2;
-  let btnY=zenUnlocked?H*0.37:H*0.40;
+  let btnY=isFirstSession?H*0.44:(zenUnlocked?H*0.37:H*0.40);
 
   // PLAY button (highlighted)
   drawMenuButton(btnX,btnY,btnW,btnH,'JOGAR','#00f5d4',true,()=>{
     zenMode=false;
     reset();state=ST.PLAY;setMusicVolume(0.12);
   });
+
+  if(isFirstSession){
+    X.fillStyle='rgba(255,255,255,0.55)';
+    X.font='13px -apple-system, system-ui, sans-serif';
+    X.textAlign='center';
+    X.fillText('Primeira partida: toque em JOGAR e entre no ritmo.',W/2,btnY+btnH+22);
+    X.fillStyle='rgba(255,255,255,0.35)';
+    X.font='11px -apple-system, system-ui, sans-serif';
+    X.fillText('Skins, ranking e estatísticas aparecem depois da 1ª partida.',W/2,btnY+btnH+40);
+
+    drawMenuButton(btnX,H*0.74,btnW,34,'⚙ CONFIGURAÇÕES','#a0a0c0',false,()=>{
+      menuScreen='settings';
+    });
+
+    return;
+  }
 
   btnY+=btnH+8;
 
@@ -1564,6 +1581,18 @@ function drawMainMenu(){
     btnY+=btnH+8;
   }
 
+  drawMenuButton(btnX,btnY,btnW,btnH,'🌍 RANKING GLOBAL','#ff6b9d',false,()=>{
+    if(needsNickname){
+      menuScreen='nickname';
+      nicknameBuffer='';
+      nicknameError='';
+    } else {
+      menuScreen='ranking';
+      loadRankings();
+    }
+  });
+
+  btnY+=btnH+8;
   drawMenuButton(btnX,btnY,btnW,btnH,'SKINS','#c084fc',false,()=>{
     menuScreen='skins';
   });
@@ -1576,18 +1605,6 @@ function drawMainMenu(){
   btnY+=btnH+8;
   drawMenuButton(btnX,btnY,btnW,btnH,'ESTATÍSTICAS','#ffd32a',false,()=>{
     menuScreen='stats';
-  });
-
-  btnY+=btnH+8;
-  drawMenuButton(btnX,btnY,btnW,btnH,'🌍 RANKING GLOBAL','#ff6b9d',false,()=>{
-    if(needsNickname){
-      menuScreen='nickname';
-      nicknameBuffer='';
-      nicknameError='';
-    } else {
-      menuScreen='ranking';
-      loadRankings();
-    }
   });
 
   btnY+=btnH+8;
@@ -3083,6 +3100,14 @@ function drawDeadUI(){
     X.globalAlpha=f*nrp;X.fillStyle='#ffd32a';
     X.font='bold 20px -apple-system, system-ui, sans-serif';
     X.fillText('⭐ NOVO RECORDE! ⭐',W/2,H*0.745);
+    X.globalAlpha=f;
+  }
+
+  if(deathT>0.55){
+    X.globalAlpha=f*(0.65+Math.sin(menuT*6)*0.15);
+    X.fillStyle='#00f5d4';
+    X.font='bold 16px -apple-system, system-ui, sans-serif';
+    X.fillText('TOQUE EM QUALQUER LUGAR PARA JOGAR DE NOVO',W/2,H*0.79);
     X.globalAlpha=f;
   }
 

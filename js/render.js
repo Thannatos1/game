@@ -1250,14 +1250,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(0.95);
+    setMusicVolume(0.72);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.78);
+    setMusicVolume(0.90);
   });
 }
 
@@ -2722,17 +2722,18 @@ function drawSettingsMenu(){
   const contentX = (W-contentW)/2;
 
   // Account info section
-  X.fillStyle='#ff6b9d';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('CONTA',contentX,curY);
-  curY+=16;
-
   if(currentUser){
+    X.fillStyle='#ffd32a';
+    X.font='bold 11px -apple-system, system-ui, sans-serif';
+    X.textAlign='left';
+    X.fillText('CONTA',contentX,curY);
+    curY+=16;
+
+    // Info card
     X.fillStyle='rgba(0,0,0,0.5)';
     roundRect(contentX,curY,contentW,50,8);
     X.fill();
-    X.strokeStyle='rgba(255,107,157,0.35)';
+    X.strokeStyle='rgba(255,211,42,0.3)';
     X.lineWidth=1;
     roundRect(contentX,curY,contentW,50,8);
     X.stroke();
@@ -2744,6 +2745,7 @@ function drawSettingsMenu(){
     X.font='bold 14px -apple-system, system-ui, sans-serif';
     X.fillText(playerName||'(sem apelido)',contentX+12,curY+30);
 
+    // Email
     if(currentUser.email){
       X.fillStyle='rgba(255,255,255,0.4)';
       X.font='9px -apple-system, system-ui, sans-serif';
@@ -2753,21 +2755,11 @@ function drawSettingsMenu(){
     }
     curY+=60;
 
+    // Change nickname button
     drawSettingsBtn(contentX,curY,contentW,'Trocar apelido','✏','#00f5d4',()=>{
       nicknameBuffer='';
       nicknameError='';
       menuScreen='changeNickname';
-    });
-    curY+=44;
-
-    drawSettingsBtn(contentX,curY,contentW,'Sair da conta','↩','#ff6b6b',()=>{
-      signOut();
-      menuScreen='main';
-    });
-    curY+=44;
-  } else {
-    drawSettingsBtn(contentX,curY,contentW,'Entrar com Google','🌐','#00f5d4',()=>{
-      signInWithGoogle();
     });
     curY+=44;
   }
@@ -3460,7 +3452,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.78);
+        setMusicVolume(0.90);
       });
     } else {
       // Smaller menu btn alongside
@@ -3469,7 +3461,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.78);
+        setMusicVolume(0.90);
       });
     }
   }

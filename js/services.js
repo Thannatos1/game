@@ -36,6 +36,25 @@ let rankingsError = '';
 let userPosition = -1;
 let lastSubmittedScore = 0;
 
+const PROFILE_NAME_CACHE_KEY = 'orbita_profile_name_cache';
+
+function getCachedProfileName() {
+  try {
+    const raw = localStorage.getItem(PROFILE_NAME_CACHE_KEY);
+    const value = String(raw || '').trim().toUpperCase();
+    return value || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function setCachedProfileName(name) {
+  try {
+    const value = String(name || '').trim().toUpperCase();
+    if (value) localStorage.setItem(PROFILE_NAME_CACHE_KEY, value);
+    else localStorage.removeItem(PROFILE_NAME_CACHE_KEY);
+  } catch (e) {}
+}
 
 // Analytics
 const ANALYTICS_QUEUE_KEY = 'orbita_analytics_queue';

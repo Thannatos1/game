@@ -45,6 +45,73 @@ let analyticsFlushTimer = null;
 let analyticsSending = false;
 let analyticsSessionId = null;
 
+const PENDING_SCORE_KEY = 'orbita_pending_score';
+let networkOnline = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
+let pendingScoreSubmission = null;
+
+function loadPendingScoreSubmission() {
+  try {
+    const raw = localStorage.getItem(PENDING_SCORE_KEY);
+    pendingScoreSubmission = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    pendingScoreSubmission = null;
+  }
+}
+
+function persistPendingScoreSubmission() {
+  try {
+    if (pendingScoreSubmission) localStorage.setItem(PENDING_SCORE_KEY, JSON.stringify(pendingScoreSubmission));
+    else localStorage.removeItem(PENDING_SCORE_KEY);
+  } catch (e) {}
+}
+
+function hasPendingScoreSubmission() {
+  return !!(pendingScoreSubmission && Number.isFinite(Number(pendingScoreSubmission.score)));
+}
+
+function isNetworkError(error) {
+  const msg = String(error?.message || error?.details || error || '').toLowerCase();
+  return !networkOnline || msg.includes('failed to fetch') || msg.includes('network') || msg.includes('fetch') || msg.includes('timeout');
+}
+
+function queuePendingScoreSubmission(score, skin) {
+  const next = { score: Number(score) || 0, skin: skin || null, queued_at: new Date().toISOString() };
+  if (!pendingScoreSubmission || next.score >= Number(pendingScoreSubmission.score || 0)) {
+    pendingScoreSubmission = next;
+    persistPendingScoreSubmission();
+  }
+}
+
+async function flushPendingScoreSubmission() {
+  if (!hasPendingScoreSubmission() || !networkOnline || !sb || !currentUser || !playerName) return false;
+  const next = pendingScoreSubmission;
+  try {
+    const { data, error } = await sb.rpc('submit_score', {
+      p_score: Number(next.score) || 0,
+      p_skin: next.skin || null
+    });
+    if (error) throw error;
+    if (data?.stored !== undefined) {
+      lastSubmittedScore = Math.max(lastSubmittedScore, Number(data.stored) || 0);
+    }
+    trackEvent('pending_score_flushed', { submitted: Number(next.score) || 0, stored: Number(data?.stored || next.score || 0) }, { urgent: true });
+    pendingScoreSubmission = null;
+    persistPendingScoreSubmission();
+    return true;
+  } catch (e) {
+    console.warn('[Orbita] pending score flush failed', e);
+    return false;
+  }
+}
+
+function setNetworkOnlineStatus(isOnline) {
+  const changed = networkOnline !== !!isOnline;
+  networkOnline = !!isOnline;
+  if (changed) {
+    trackEvent(networkOnline ? 'network_online' : 'network_offline', { pending_score: hasPendingScoreSubmission() });
+  }
+}
+
 function getAnalyticsSessionId() {
   if (analyticsSessionId) return analyticsSessionId;
   try {
@@ -117,6 +184,7 @@ async function flushAnalyticsQueue(force = false) {
   if (analyticsSending) return false;
   if (!analyticsQueue.length) return true;
   if (!sb) initSupabase();
+  if (!networkOnline) return false;
   if (!sb) return false;
 
   const batch = analyticsQueue.slice(0, force ? 100 : 25);
@@ -137,6 +205,7 @@ async function flushAnalyticsQueue(force = false) {
 }
 
 loadAnalyticsQueue();
+loadPendingScoreSubmission();
 
 // Initialize auth on load
 async function initAuth() {
@@ -164,27 +233,36 @@ async function initAuth() {
     console.log('[Orbita] Session:', !!session);
     if (session && session.user) {
       currentUser = session.user;
-      await loadProfile();
-      console.log('[Orbita] Profile loaded. playerName:', playerName, 'needsNickname:', needsNickname);
-      if (playerName && !needsNickname) {
-        menuScreen = 'main';
-      } else {
-        menuScreen = 'nickname';
+      const cachedName = getCachedProfileName();
+      if (cachedName) {
+        playerName = cachedName;
+        needsNickname = false;
       }
+      menuScreen = 'main';
+      authLoading = false;
+
+      loadProfile().then(() => {
+        console.log('[Orbita] Profile loaded. playerName:', playerName, 'needsNickname:', needsNickname);
+        menuScreen = (playerName && !needsNickname) ? 'main' : 'nickname';
+      });
+
       trackEvent('auth_signed_in', { has_nickname: !!playerName });
       scheduleAnalyticsFlush(400);
+      flushPendingScoreSubmission();
     } else {
       menuScreen = 'main';
+      authLoading = false;
     }
   } catch(e) {
     console.error('[Orbita] Auth init failed', e);
     menuScreen = 'main';
+    authLoading = false;
   }
   clearTimeout(timeoutId);
-  authLoading = false;
   console.log('[Orbita] initAuth done. Screen:', menuScreen);
-  trackEvent('app_open', { screen: menuScreen, has_session: !!currentUser });
+  trackEvent('app_open', { screen: menuScreen, has_session: !!currentUser, online: networkOnline });
   scheduleAnalyticsFlush(600);
+  flushPendingScoreSubmission();
 }
 
 async function loadProfile() {
@@ -198,8 +276,11 @@ async function loadProfile() {
     if (error) throw error;
     if (data && data.name) {
       playerName = String(data.name);
+      setCachedProfileName(playerName);
       needsNickname = false;
     } else {
+      playerName = '';
+      setCachedProfileName('');
       needsNickname = true;
     }
   } catch(e) {
@@ -208,7 +289,11 @@ async function loadProfile() {
 }
 
 async function signInWithGoogle() {
-  if (!sb) return;
+  if (!sb || !networkOnline) {
+    trackEvent('auth_sign_in_blocked_offline', { screen: menuScreen || 'unknown' });
+    rankingsError = 'Sem internet';
+    return;
+  }
   try {
     trackEvent('auth_sign_in_click', { screen: menuScreen || 'unknown' });
     await sb.auth.signInWithOAuth({
@@ -227,6 +312,7 @@ async function signOut() {
     await sb.auth.signOut();
     currentUser = null;
     playerName = '';
+    setCachedProfileName('');
     needsNickname = false;
     menuScreen = 'main';
   } catch(e) {
@@ -268,6 +354,7 @@ async function setNicknameViaRpc(name) {
     if (error) throw error;
     const finalName = String(data?.name || cleanName);
     playerName = finalName;
+    setCachedProfileName(playerName);
     needsNickname = false;
     nicknameError = '';
     nicknameStatusText = '';
@@ -290,6 +377,12 @@ async function saveNickname(name) {
 
 async function submitScore(score, skin) {
   if (!sb || !currentUser || !playerName) return false;
+  if (!networkOnline) {
+    queuePendingScoreSubmission(score, skin);
+    lastSubmittedScore = Math.max(lastSubmittedScore, Number(score) || 0);
+    trackEvent('score_queued_offline', { submitted: Number(score) || 0, skin: skin || null });
+    return true;
+  }
   try {
     const { data, error } = await sb.rpc('submit_score', {
       p_score: score,
@@ -303,6 +396,12 @@ async function submitScore(score, skin) {
     return true;
   } catch(e) {
     console.error('submit_score failed', e);
+    if (isNetworkError(e)) {
+      queuePendingScoreSubmission(score, skin);
+      lastSubmittedScore = Math.max(lastSubmittedScore, Number(score) || 0);
+      trackEvent('score_queued_retry', { submitted: Number(score) || 0, skin: skin || null });
+      return true;
+    }
     const friendly = getRpcScoreError(e);
     if (friendly === 'Defina um apelido antes de enviar score') {
       needsNickname = true;
@@ -312,6 +411,10 @@ async function submitScore(score, skin) {
 }
 
 async function loadRankings() {
+  if (!networkOnline) {
+    rankingsError = 'Sem internet';
+    return;
+  }
   if (!sb) {
     rankingsError = 'Sem conexão';
     return;
@@ -343,8 +446,49 @@ async function loadRankings() {
 }
 
 async function deleteAccount() {
-  console.warn('deleteAccount requires a dedicated backend function; current SQL locks direct deletes.');
-  return false;
+  if (!sb || !currentUser) return false;
+
+  try {
+    const { error } = await sb.rpc('delete_my_account_data');
+    if (error) throw error;
+
+    trackEvent('account_delete', { had_profile: !!playerName, best_score: best || 0 }, { urgent: true });
+    await flushAnalyticsQueue(true);
+
+    await sb.auth.signOut();
+
+    try { localStorage.removeItem('orbita_save'); } catch (e) {}
+    setCachedProfileName('');
+    try { localStorage.removeItem(ANALYTICS_QUEUE_KEY); } catch (e) {}
+
+    currentUser = null;
+    playerName = '';
+    needsNickname = false;
+    authLoading = false;
+    best = 0;
+    totalGames = 0;
+    totalScoreEver = 0;
+    totalNodesEver = 0;
+    bestComboEver = 0;
+    highestPhase = 1;
+    totalGoldCaptured = 0;
+    achievements = [];
+    unlockedSkins = ['default'];
+    unlockedBgs = ['space'];
+    zenUnlocked = false;
+    selectedSkin = 'default';
+    selectedBg = 'space';
+    rankings = [];
+    userPosition = -1;
+    rankingsError = '';
+    lastSubmittedScore = 0;
+    menuScreen = 'login';
+
+    return true;
+  } catch (e) {
+    console.error('Delete account failed', e);
+    return false;
+  }
 }
 
 function resetLocalProgress() {
@@ -377,17 +521,22 @@ if (sb) {
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
-      await loadProfile();
-      if (playerName && !needsNickname) {
-        menuScreen = 'main';
-      } else {
-        menuScreen = 'nickname';
+      const cachedName = getCachedProfileName();
+      if (cachedName) {
+        playerName = cachedName;
+        needsNickname = false;
       }
+      menuScreen = 'main';
+      loadProfile().then(() => {
+        menuScreen = (playerName && !needsNickname) ? 'main' : 'nickname';
+      });
       trackEvent('auth_signed_in', { has_nickname: !!playerName });
       scheduleAnalyticsFlush(400);
+      flushPendingScoreSubmission();
     } else if (event === 'SIGNED_OUT') {
       currentUser = null;
       playerName = '';
+      setCachedProfileName('');
       needsNickname = false;
       menuScreen = 'login';
       trackEvent('auth_signed_out', {});
@@ -396,22 +545,35 @@ if (sb) {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initAuth, 100);
-  });
+  document.addEventListener('DOMContentLoaded', initAuth, { once: true });
 } else {
-  setTimeout(initAuth, 100);
+  initAuth();
 }
 
+
+
+window.addEventListener('online', () => {
+  setNetworkOnlineStatus(true);
+  scheduleAnalyticsFlush(250);
+  flushPendingScoreSubmission();
+  if (menuScreen === 'ranking') loadRankings();
+});
+
+window.addEventListener('offline', () => {
+  setNetworkOnlineStatus(false);
+  if (menuScreen === 'ranking') rankingsError = 'Sem internet';
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     flushAnalyticsQueue(true);
-  } else if (analyticsQueue.length) {
-    scheduleAnalyticsFlush(500);
+  } else {
+    if (analyticsQueue.length) scheduleAnalyticsFlush(500);
+    flushPendingScoreSubmission();
   }
 });
 
 window.addEventListener('beforeunload', () => {
   persistAnalyticsQueue();
+  persistPendingScoreSubmission();
 });

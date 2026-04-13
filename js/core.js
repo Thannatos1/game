@@ -17,13 +17,25 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ============ AUDIO ============
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const MUSIC_BASE_GAIN = 0.12;
 let actx = null;
+let musicSceneLevel = 0.66;
+function getMusicTargetGain(sceneLevel = musicSceneLevel) {
+  return muted ? 0 : MUSIC_BASE_GAIN * clamp(sceneLevel, 0, 1) * clamp(musicVol, 0, 1);
+}
 function initAudio() {
   if (!actx) {
     actx = new AudioCtx();
     initMusic();
   }
+  if (actx && actx.state === 'suspended') {
+    actx.resume().catch(()=>{});
+  }
 }
+
+window.addEventListener('pointerdown', () => {
+  if (actx && actx.state === 'suspended') actx.resume().catch(()=>{});
+}, { passive:true });
 
 // ============ AMBIENT MUSIC ============
 let musicGain = null;
@@ -36,7 +48,7 @@ function initMusic() {
 
   // Master music gain (low volume)
   musicGain = actx.createGain();
-  musicGain.gain.value = 0.08;
+  musicGain.gain.value = getMusicTargetGain(0.66);
 
   // Reverb-like delay for spacious feel
   const delay = actx.createDelay(2);
@@ -117,17 +129,17 @@ function initMusic() {
 }
 
 function setMusicVolume(v) {
-  if (musicGain) {
-    const target = muted ? 0 : v * musicVol;
-    musicGain.gain.linearRampToValueAtTime(target, actx.currentTime + 0.3);
+  musicSceneLevel = clamp(v, 0, 1);
+  if (musicGain && actx) {
+    musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + 0.25);
   }
 }
 
 function toggleMute() {
   muted = !muted;
   saveData();
-  if (musicGain) {
-    musicGain.gain.linearRampToValueAtTime(muted ? 0 : 0.12 * musicVol, actx.currentTime + 0.2);
+  if (musicGain && actx) {
+    musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + 0.18);
   }
 }
 

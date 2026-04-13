@@ -7,6 +7,8 @@ function getCaptureR(tier){
   const base = {easy:62,medium:50,hard:38,gold:34};
   let r = base[tier]||50;
   if(zenMode)r+=15; // Bigger capture zones in zen
+  const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
+  if(ev && ev.id==='calm_orbit' && (tier==='easy' || tier==='medium')) r += 6;
   const shrink = zenMode?0:Math.min(score*0.15, 12);
   return Math.max(r - shrink, 28);
 }
@@ -224,7 +226,8 @@ function reset(){
   activeShield=false;
   slowMoTimer=0;
   magnetTimer=0;
-  powerupSpawnTimer=8; // First powerup after 8 seconds
+  const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
+  powerupSpawnTimer=(ev && ev.id==='power_surge') ? 6 : 8; // First powerup after 6-8 seconds
   // Tutorial only for first 3 games
   tutorialStep = totalGames < 3 ? 1 : 0;
   tutorialT = 0;
@@ -275,7 +278,7 @@ function capture(nodeIdx){
 
   // Combo
   const now=performance.now()/1000;
-  if(now-lastCaptureTime<2.5&&lastCaptureTime>0){
+  if(now-lastCaptureTime<getComboWindow()&&lastCaptureTime>0){
     combo++;
     if(combo>maxCombo)maxCombo=combo;
   } else { combo=1; }
@@ -285,8 +288,11 @@ function capture(nodeIdx){
   // Score
   const pts=n.pts||1;
   const comboMul=combo>=5?2:(combo>=3?1.5:1);
-  const gained=Math.ceil(pts*comboMul);
+  const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
+  const eventBonus = (ev && ev.id==='gold_rush' && n.tier==='gold') ? 1 : 0;
+  const gained=Math.ceil(pts*comboMul)+eventBonus;
   score+=gained;
+  handleMissionReward(applyMissionProgress('best_run_score', score));
 
   // Effects
   const tc=TIERS[n.tier]||TIERS.medium;
@@ -304,6 +310,7 @@ function capture(nodeIdx){
   if(combo>=3){
     addScorePopup(n.x,n.y-55,'COMBO '+combo+'!',combo>=5?'#ffd32a':'#00f5d4');
   }
+  handleMissionReward(applyMissionProgress('best_run_combo', combo));
   if(combo>=5){
     flashA=Math.max(flashA,0.12);
     shakeT=Math.max(shakeT,0.08);
@@ -318,9 +325,7 @@ function capture(nodeIdx){
   // Epic gold node animation
   if(n.tier==='gold'){
     totalGoldCaptured++;
-    if (typeof trackEvent === 'function') {
-      trackEvent('gold_capture', { score, combo, phase: getPhase(), mode: zenMode ? 'zen' : 'normal' });
-    }
+    handleMissionReward(applyMissionProgress('gold_captures', 1));
     addScorePopup(n.x,n.y-78,'OURO!','#ffd32a');
     goldFlashT=1.0;
     goldZoomT=1.0;
@@ -366,9 +371,7 @@ function capture(nodeIdx){
   if(newPhase>prevPhase&&PHASE_NAMES[newPhase]){
     phaseMsg=PHASE_NAMES[newPhase];phaseMsgT=2.5;sndPhase();
     vibrate([40,30,40,30,40]);
-    if (typeof trackEvent === 'function') {
-      trackEvent('phase_reached', { phase: newPhase, score, combo, mode: zenMode ? 'zen' : 'normal' });
-    }
+    handleMissionReward(applyMissionProgress('best_run_phase', newPhase));
   }
 
   // Spawn new branches
@@ -431,16 +434,11 @@ function die(){
   emit(ball.x,ball.y,30,['#ff6b6b','#ffa502','#e056fd','#70a1ff','#ffffff'],1.5);
   vibrate(newRec?[80,40,80]:50);
   totalGames++;
-  if (typeof trackEvent === 'function') {
-    trackEvent('game_over', { score, phase: finalPhase, max_combo: maxCombo, new_record: !!newRec, mode: zenMode ? 'zen' : 'normal' }, { urgent: true });
-    if (newRec) {
-      trackEvent('new_record', { score, phase: finalPhase, max_combo: maxCombo, mode: zenMode ? 'zen' : 'normal' }, { urgent: true });
-    }
-    flushAnalyticsQueue(true);
-  }
-  pendingUnlocks = checkUnlocks();
+  handleMissionReward(applyMissionProgress('games_finished', 1));
+  const missionPending = pendingUnlocks.slice();
+  const newUnlocks = checkUnlocks();
   pendingAchievements = checkAchievements();
-  pendingUnlocks = pendingUnlocks.concat(pendingAchievements);
+  pendingUnlocks = missionPending.concat(newUnlocks, pendingAchievements);
   saveData();
   setMusicVolume(0.05);
 }
@@ -487,9 +485,6 @@ function spawnPowerup(){
 }
 
 function collectPowerup(p){
-  if (typeof trackEvent === 'function') {
-    trackEvent('powerup_collected', { type: p.type, score, phase: getPhase(), mode: zenMode ? 'zen' : 'normal' });
-  }
   if(p.type==='shield'){
     activeShield=true;
     emit(p.x,p.y,15,['#00ffff','#80ffff','#ffffff'],1);
@@ -500,6 +495,7 @@ function collectPowerup(p){
     magnetTimer=4;
     emit(p.x,p.y,15,['#ffd32a','#ffaa00','#ffffff'],1);
   }
+  handleMissionReward(applyMissionProgress('powerups_collected', 1));
   if(actx&&!muted){
     playTone(600,0.15,'sine',0.15);
     setTimeout(()=>playTone(900,0.15,'triangle',0.1),80);
@@ -527,6 +523,28 @@ function isMuteBtnTap(x, y) {
 // Menu button areas
 let menuBtnAreas = [];
 
+function getComboWindow(){
+  const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
+  return (ev && ev.id==='combo_fever') ? 3.0 : 2.5;
+}
+
+function handleMissionReward(reward){
+  if(!reward) return;
+  pendingUnlocks.push(reward);
+  phaseMsg='MISSÃO CONCLUÍDA';
+  phaseMsgT=2.2;
+  flashA=Math.max(flashA,0.18);
+  shakeT=Math.max(shakeT,0.12);
+  shakeA=Math.max(shakeA,5);
+  emit(ball.x,ball.y,18,['#7bed9f','#00f5d4','#ffffff'],1.0);
+  addScorePopup(ball.x,ball.y-60,'MISSÃO!', '#7bed9f');
+  if(actx&&!muted){
+    playTone(720,0.16,'sine',0.12);
+    setTimeout(()=>playTone(980,0.18,'triangle',0.10),90);
+  }
+  vibrate([20,15,20,15,30]);
+}
+
 function shouldShowAssistGuides(){
   return tutorialStep>0 || totalGames<1;
 }
@@ -537,14 +555,13 @@ function startRun(useZen, source='unknown'){
   reset();
   state = ST.PLAY;
   setMusicVolume(zenMode?0.10:0.12);
-  if (typeof trackEvent === 'function') {
+  if(typeof trackEvent==='function'){
     trackEvent('game_start', { mode: zenMode ? 'zen' : 'normal', source, best, unlocked_skins: unlockedSkins.length, unlocked_bgs: unlockedBgs.length });
   }
 }
 
 function quickRestartGame(source='retry'){
-  const keepZen = zenMode;
-  startRun(keepZen, source);
+  startRun(zenMode, source);
 }
 
 function handleTap(x, y){
@@ -739,7 +756,8 @@ function update(dt){
     powerupSpawnTimer-=dt;
     if(powerupSpawnTimer<=0 && powerups.length<2){
       spawnPowerup();
-      powerupSpawnTimer=15+Math.random()*15; // Every 15-30s
+      const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
+      powerupSpawnTimer=(ev && ev.id==='power_surge') ? (10+Math.random()*12) : (15+Math.random()*15); // Event can speed this up
     }
   }
 

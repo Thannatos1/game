@@ -104,6 +104,8 @@ try {
     musicVol = d.musicVol !== undefined ? d.musicVol : 0.5;
     sfxVol = d.sfxVol !== undefined ? d.sfxVol : 0.8;
     vibrationOn = d.vibrationOn !== undefined ? d.vibrationOn : true;
+    dailyMissionState = d.dailyMissionState || null;
+    missionsCompletedTotal = d.missionsCompletedTotal || 0;
   }
 } catch(e) {}
 
@@ -113,7 +115,8 @@ function saveData() {
       best, totalGames, muted, selectedSkin, selectedBg,
       unlockedSkins, unlockedBgs, totalGoldCaptured, zenUnlocked,
       totalScoreEver, totalNodesEver, bestComboEver, highestPhase,
-      achievements, musicVol, sfxVol, vibrationOn
+      achievements, musicVol, sfxVol, vibrationOn,
+      dailyMissionState, missionsCompletedTotal
     }));
   } catch(e) {}
 }
@@ -142,5 +145,172 @@ function checkUnlocks() {
   return newUnlocks;
 }
 checkUnlocks();
+ensureDailyMissionState();
 
 let pendingUnlocks = [];
+
+// ============ MISSÕES / EVENTOS ============
+const DAILY_MISSION_TEMPLATES = [
+  {id:'play_3', icon:'🎯', name:'Piloto do Dia', desc:'Termine 3 partidas hoje', metric:'games_finished', target:3, mode:'count'},
+  {id:'score_20', icon:'🚀', name:'Arranque Perfeito', desc:'Faça 20 pontos em uma única run', metric:'best_run_score', target:20, mode:'max'},
+  {id:'gold_2', icon:'⭐', name:'Caça ao Ouro', desc:'Capture 2 nós dourados hoje', metric:'gold_captures', target:2, mode:'count'},
+  {id:'combo_5', icon:'🔥', name:'Ritmo Orbital', desc:'Faça combo x5 em uma run', metric:'best_run_combo', target:5, mode:'max'},
+  {id:'phase_3', icon:'🛡', name:'Avanço Seguro', desc:'Chegue à fase 3 hoje', metric:'best_run_phase', target:3, mode:'max'},
+  {id:'powerup_2', icon:'⚡', name:'Energia Extra', desc:'Colete 2 power-ups hoje', metric:'powerups_collected', target:2, mode:'count'},
+];
+
+const DAILY_REWARD_POOL = [
+  {type:'skin', key:'azul'},
+  {type:'skin', key:'verde'},
+  {type:'skin', key:'rosa'},
+  {type:'skin', key:'roxo'},
+  {type:'bg', key:'nebula'},
+  {type:'bg', key:'galaxy'},
+];
+
+let dailyMissionState = null;
+let currentEventState = null;
+let missionsCompletedTotal = 0;
+
+function getLocalDayKey(date){
+  const d = date || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function hashString(str){
+  let h = 2166136261 >>> 0;
+  for(let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function getMissionTemplateById(id){
+  return DAILY_MISSION_TEMPLATES.find(m=>m.id===id) || DAILY_MISSION_TEMPLATES[0];
+}
+
+function getMissionTemplateForDay(dayKey){
+  const idx = hashString(dayKey + '_mission') % DAILY_MISSION_TEMPLATES.length;
+  return DAILY_MISSION_TEMPLATES[idx];
+}
+
+function getEventForDay(dayKey){
+  const d = new Date(dayKey + 'T12:00:00');
+  const dow = d.getDay();
+  if(dow===5 || dow===6 || dow===0){
+    return {id:'gold_rush', icon:'🌟', name:'Corrida do Ouro', desc:'Nós dourados valem +1 ponto', color:'#ffd32a'};
+  }
+  if(dow===2 || dow===3){
+    return {id:'combo_fever', icon:'🔥', name:'Febre de Combo', desc:'Combo dura +0.5s', color:'#00f5d4'};
+  }
+  if(dow===4){
+    return {id:'power_surge', icon:'⚡', name:'Surto de Energia', desc:'Power-ups aparecem mais cedo', color:'#c084fc'};
+  }
+  return {id:'calm_orbit', icon:'☯', name:'Órbita Calma', desc:'Nós fáceis e médios ficam maiores', color:'#7bed9f'};
+}
+
+function buildDailyMissionState(dayKey){
+  const tpl = getMissionTemplateForDay(dayKey);
+  return {
+    dayKey,
+    missionId: tpl.id,
+    progress: 0,
+    completed: false,
+    rewarded: false,
+  };
+}
+
+function ensureDailyMissionState(force){
+  const today = getLocalDayKey();
+  if(force || !dailyMissionState || dailyMissionState.dayKey !== today){
+    dailyMissionState = buildDailyMissionState(today);
+  }
+  currentEventState = getEventForDay(today);
+  return dailyMissionState;
+}
+
+function getDailyMissionTemplate(){
+  ensureDailyMissionState();
+  return getMissionTemplateById(dailyMissionState.missionId);
+}
+
+function getActiveEvent(){
+  ensureDailyMissionState();
+  return currentEventState;
+}
+
+function getDailyMissionProgress(){
+  ensureDailyMissionState();
+  return Number(dailyMissionState.progress || 0);
+}
+
+function getDailyMissionProgressText(){
+  const tpl = getDailyMissionTemplate();
+  const progress = Math.min(getDailyMissionProgress(), tpl.target);
+  return `${progress}/${tpl.target}`;
+}
+
+function chooseDailyReward(){
+  const locked = DAILY_REWARD_POOL.filter(item=>{
+    if(item.type==='skin') return !unlockedSkins.includes(item.key) && !!SKINS[item.key];
+    if(item.type==='bg') return !unlockedBgs.includes(item.key) && !!BACKGROUNDS[item.key];
+    return false;
+  });
+
+  if(!locked.length){
+    return {type:'mission', key:'daily_complete', data:{name:'Missão diária', desc:'Concluída! Volte amanhã para outra.', icon:'🌠'}};
+  }
+
+  const idx = hashString(dailyMissionState.dayKey + '_reward') % locked.length;
+  const reward = locked[idx];
+  if(reward.type==='skin'){
+    unlockedSkins.push(reward.key);
+    return {type:'skin', key:reward.key, data:SKINS[reward.key]};
+  }
+  unlockedBgs.push(reward.key);
+  return {type:'bg', key:reward.key, data:BACKGROUNDS[reward.key]};
+}
+
+function grantDailyMissionReward(){
+  ensureDailyMissionState();
+  if(dailyMissionState.rewarded) return null;
+  dailyMissionState.rewarded = true;
+  missionsCompletedTotal++;
+  const reward = chooseDailyReward();
+  if(typeof trackEvent==='function'){
+    trackEvent('daily_mission_completed', {
+      mission_id: dailyMissionState.missionId,
+      reward_type: reward.type,
+      reward_key: reward.key || null,
+    }, {urgent:true});
+  }
+  saveData();
+  return reward;
+}
+
+function applyMissionProgress(metric, value){
+  ensureDailyMissionState();
+  const tpl = getDailyMissionTemplate();
+  if(tpl.metric !== metric) return null;
+  if(dailyMissionState.rewarded) return null;
+
+  const nextValue = Number(value || 0);
+  if(tpl.mode === 'count'){
+    dailyMissionState.progress = Math.min(tpl.target, Number(dailyMissionState.progress || 0) + nextValue);
+  } else {
+    dailyMissionState.progress = Math.max(Number(dailyMissionState.progress || 0), nextValue);
+  }
+
+  let reward = null;
+  if(!dailyMissionState.completed && Number(dailyMissionState.progress || 0) >= tpl.target){
+    dailyMissionState.completed = true;
+    reward = grantDailyMissionReward();
+  }
+  saveData();
+  return reward;
+}
+

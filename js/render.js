@@ -1503,6 +1503,34 @@ function drawTutorial(){
   }
 }
 
+
+function drawTopStatusBadges() {
+  const badges = [];
+  if (typeof networkOnline !== 'undefined' && !networkOnline) {
+    badges.push({ text:'SEM INTERNET', color:'#ff6b6b' });
+  }
+  if (typeof hasPendingScoreSubmission === 'function' && hasPendingScoreSubmission()) {
+    badges.push({ text:'SCORE PENDENTE', color:'#ffd32a' });
+  }
+  if (!badges.length) return;
+
+  let x = 18;
+  const y = H - 28;
+  for (const badge of badges) {
+    X.font='bold 10px -apple-system, system-ui, sans-serif';
+    const pad = 10;
+    const w = X.measureText(badge.text).width + pad*2;
+    X.globalAlpha=0.85;
+    X.fillStyle='rgba(0,0,0,0.65)';
+    roundRect(x,y,w,22,11); X.fill();
+    X.strokeStyle=badge.color; X.lineWidth=1.5; roundRect(x,y,w,22,11); X.stroke();
+    X.globalAlpha=1;
+    X.fillStyle=badge.color; X.textAlign='center'; X.textBaseline='middle';
+    X.fillText(badge.text, x+w/2, y+11);
+    x += w + 8;
+  }
+}
+
 function drawMenuUI(){
   menuBtnAreas = [];
   if(menuScreen==='loading')drawLoadingScreen();
@@ -1516,9 +1544,67 @@ function drawMenuUI(){
   else if(menuScreen==='settings')drawSettingsMenu();
   else if(menuScreen==='changeNickname')drawChangeNicknameScreen();
   else if(menuScreen==='confirmDelete')drawConfirmDeleteScreen();
+  else if(menuScreen==='installHelp')drawInstallHelpScreen();
+}
+
+
+
+function drawMissionInfoCard(x,y,w,compact){
+  if(typeof ensureDailyMissionState==='function') ensureDailyMissionState();
+  const mission = (typeof getDailyMissionTemplate==='function') ? getDailyMissionTemplate() : null;
+  const event = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
+  if(!mission) return;
+
+  const h = compact ? 76 : 88;
+  X.save();
+  X.globalAlpha=0.78;
+  const bg=X.createLinearGradient(x,y,x,y+h);
+  bg.addColorStop(0,'rgba(0,0,0,0.72)');
+  bg.addColorStop(1,'rgba(0,0,0,0.88)');
+  X.fillStyle=bg;
+  roundRect(x,y,w,h,12); X.fill();
+  X.strokeStyle=event ? event.color : '#7bed9f';
+  X.lineWidth=1.5;
+  roundRect(x,y,w,h,12); X.stroke();
+  X.globalAlpha=1;
+
+  X.textAlign='left'; X.textBaseline='middle';
+  const pad=12;
+  if(event){
+    X.fillStyle=event.color;
+    X.font='bold 11px -apple-system, system-ui, sans-serif';
+    X.fillText(event.icon + ' ' + event.name.toUpperCase(), x+pad, y+16);
+    X.fillStyle='rgba(255,255,255,0.58)';
+    X.font='10px -apple-system, system-ui, sans-serif';
+    X.fillText(event.desc, x+pad, y+30);
+  }
+
+  const progressText = (typeof getDailyMissionProgressText==='function') ? getDailyMissionProgressText() : '0/0';
+  const progressRatio = (typeof getDailyMissionProgress==='function') ? Math.min(1, getDailyMissionProgress()/mission.target) : 0;
+  const done = !!(dailyMissionState && dailyMissionState.completed);
+  const titleY = compact ? y+48 : y+54;
+
+  X.fillStyle=done ? '#7bed9f' : '#ffd32a';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.fillText((done?'✅ ':'🎯 ') + 'MISSÃO DO DIA', x+pad, titleY-10);
+  X.fillStyle='#fff';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.fillText(mission.desc, x+pad, titleY+6);
+
+  const barX=x+pad, barY=y+h-18, barW=w-pad*2, barH=8;
+  X.fillStyle='rgba(255,255,255,0.12)';
+  roundRect(barX,barY,barW,barH,4); X.fill();
+  X.fillStyle=done ? '#7bed9f' : '#ffd32a';
+  roundRect(barX,barY,Math.max(8,barW*progressRatio),barH,4); X.fill();
+  X.fillStyle='rgba(255,255,255,0.72)';
+  X.font='bold 10px -apple-system, system-ui, sans-serif';
+  X.textAlign='right';
+  X.fillText(progressText, x+w-pad, barY-4);
+  X.restore();
 }
 
 function drawMainMenu(){
+  drawTopStatusBadges();
   X.textAlign='center';X.textBaseline='middle';
 
   // Title
@@ -1591,11 +1677,12 @@ function drawMainMenu(){
       menuScreen='settings';
     });
 
+    drawMissionInfoCard((W-Math.min(W*0.82,320))/2, H*0.80, Math.min(W*0.82,320), true);
     if(best>0){
       X.fillStyle='rgba(255,255,255,0.4)';
       X.font='14px -apple-system, system-ui, sans-serif';
       X.textAlign='center';X.textBaseline='middle';
-      X.fillText('RECORDE: '+best,W/2,H*0.92);
+      X.fillText('RECORDE: '+best,W/2,H*0.93);
     }
     return;
   }
@@ -1638,6 +1725,8 @@ function drawMainMenu(){
       startRun(true,'menu_zen');
     });
   }
+
+  drawMissionInfoCard((W-Math.min(W*0.82,320))/2, Math.min(H*0.80, btnY+52), Math.min(W*0.82,320), true);
 
   // Best score
   if(best>0){
@@ -2047,8 +2136,11 @@ function drawStatsMenu(){
     X.fillText(s.value,cx+cellW/2,cy+36);
   }
 
+  const missionCardY=curY+Math.ceil(stats.length/cols)*(cellH+gap)+12;
+  drawMissionInfoCard((W-Math.min(W*0.86,330))/2, missionCardY, Math.min(W*0.86,330), false);
+
   // Achievements section
-  const achY=curY+Math.ceil(stats.length/cols)*(cellH+gap)+15;
+  const achY=missionCardY+102;
   X.fillStyle='#ffd32a';
   X.font='bold 12px -apple-system, system-ui, sans-serif';
   X.textAlign='center';
@@ -2111,6 +2203,7 @@ function drawStatsMenu(){
 }
 
 function drawRankingMenu(){
+  drawTopStatusBadges();
   X.textAlign='center';X.textBaseline='middle';
 
   X.fillStyle='#e0e0ff';X.font='bold 26px -apple-system, system-ui, sans-serif';
@@ -2319,6 +2412,7 @@ function drawLoadingScreen(){
 }
 
 function drawLoginScreen(){
+  drawTopStatusBadges();
   X.textAlign='center';X.textBaseline='middle';
 
   // Big title
@@ -2613,6 +2707,7 @@ function drawVirtualKeyboard(){
 
 // ============ SETTINGS SCREENS ============
 function drawSettingsMenu(){
+  drawTopStatusBadges();
   X.textAlign='center';X.textBaseline='middle';
 
   X.fillStyle='#e0e0ff';X.font='bold 28px -apple-system, system-ui, sans-serif';
@@ -2679,9 +2774,7 @@ function drawSettingsMenu(){
   // Music volume slider
   drawSlider(contentX,curY,contentW,'Música',musicVol,(v)=>{
     musicVol=v;
-    if(musicGain && !muted){
-      musicGain.gain.linearRampToValueAtTime(0.12*musicVol, actx.currentTime+0.1);
-    }
+    setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.66);
     saveData();
   });
   curY+=50;
@@ -2715,6 +2808,47 @@ function drawSettingsMenu(){
   });
   curY+=44;
 
+  X.fillStyle='#ff9f43';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('REDE',contentX,curY);
+  curY+=16;
+
+  X.fillStyle='rgba(0,0,0,0.5)';
+  roundRect(contentX,curY,contentW,42,8);
+  X.fill();
+  X.strokeStyle=(typeof networkOnline !== 'undefined' && networkOnline)?'rgba(123,237,159,0.35)':'rgba(255,107,107,0.35)';
+  X.lineWidth=1;
+  roundRect(contentX,curY,contentW,42,8);
+  X.stroke();
+  X.fillStyle=(typeof networkOnline !== 'undefined' && networkOnline)?'#7bed9f':'#ff6b6b';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.fillText((typeof networkOnline !== 'undefined' && networkOnline)?'Online':'Offline',contentX+12,curY+14);
+  X.fillStyle='rgba(255,255,255,0.55)';
+  X.font='10px -apple-system, system-ui, sans-serif';
+  X.fillText((typeof hasPendingScoreSubmission === 'function' && hasPendingScoreSubmission())?'Seu melhor score será enviado quando voltar a internet.':'Ranking e login sincronizam quando houver conexão.',contentX+12,curY+29);
+  curY+=52;
+
+  // App / install section
+  X.fillStyle='#7bed9f';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('APP',contentX,curY);
+  curY+=16;
+
+  if(!isStandaloneApp && (canInstallApp || canShowIosInstallHelp)){
+    drawSettingsBtn(contentX,curY,contentW,canInstallApp?'Instalar app':'Como instalar no iPhone','⬇','#7bed9f',()=>{
+      promptInstallApp();
+    });
+    curY+=44;
+  }
+
+  X.fillStyle='rgba(255,255,255,0.45)';
+  X.font='10px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText(pwaStatusText||'Abra no navegador do celular para instalar',contentX,curY+4);
+  curY+=24;
+
   // Reset progress button
   drawSettingsBtn(contentX,curY,contentW,'Resetar progresso local','↻','#ffa502',()=>{
     if(confirm('Isso vai apagar suas skins, fundos, conquistas e estatísticas locais. Continuar?')){
@@ -2733,6 +2867,49 @@ function drawSettingsMenu(){
 
   X.textAlign='center';
 }
+
+function drawInstallHelpScreen(){
+  X.textAlign='center';X.textBaseline='middle';
+
+  X.fillStyle='#e0e0ff';X.font='bold 26px -apple-system, system-ui, sans-serif';
+  X.shadowColor='#7bed9f';X.shadowBlur=15;
+  X.fillText('INSTALAR ÓRBITA',W/2,H*0.08);
+  X.shadowBlur=0;
+
+  drawBackBtn();
+
+  const cardW=Math.min(W*0.86,340);
+  const cardH=Math.min(H*0.62,360);
+  const cardX=(W-cardW)/2;
+  const cardY=H*0.16;
+
+  X.fillStyle='rgba(0,0,0,0.55)';
+  roundRect(cardX,cardY,cardW,cardH,14);
+  X.fill();
+  X.strokeStyle='#7bed9f';
+  X.lineWidth=1.5;
+  roundRect(cardX,cardY,cardW,cardH,14);
+  X.stroke();
+
+  X.fillStyle='#7bed9f';
+  X.font='bold 18px -apple-system, system-ui, sans-serif';
+  X.fillText('No iPhone / iPad',W/2,cardY+36);
+
+  X.fillStyle='rgba(255,255,255,0.75)';
+  X.font='13px -apple-system, system-ui, sans-serif';
+  X.fillText('1. Toque no botão Compartilhar do Safari',W/2,cardY+88);
+  X.fillText('2. Escolha “Adicionar à Tela de Início”',W/2,cardY+126);
+  X.fillText('3. Confirme para instalar o app',W/2,cardY+164);
+
+  X.fillStyle='rgba(255,255,255,0.45)';
+  X.font='11px -apple-system, system-ui, sans-serif';
+  X.fillText('Depois disso o jogo abre como app, sem barra do navegador.',W/2,cardY+214);
+
+  drawActionBtn(cardX+20,cardY+cardH-72,cardW-40,44,'VOLTAR','#7bed9f',false,()=>{
+    menuScreen='settings';
+  });
+}
+
 
 function drawSettingsBtn(x,y,w,label,icon,color,action){
   const h=38;
@@ -2977,7 +3154,7 @@ function drawConfirmDeleteScreen(){
 
   // Card
   const cardW=Math.min(W*0.85,340);
-  const cardH=300;
+  const cardH=328;
   const cardX=(W-cardW)/2;
   const cardY=(H-cardH)/2;
 
@@ -3011,9 +3188,12 @@ function drawConfirmDeleteScreen(){
   X.fillText('• Seu apelido do ranking',W/2,cardY+150);
   X.fillText('• Sua pontuação global',W/2,cardY+166);
   X.fillText('• Seu progresso local',W/2,cardY+182);
+  X.fillStyle='rgba(255,255,255,0.85)';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.fillText('Apelido atual: ' + (playerName || '(sem apelido)'),W/2,cardY+204);
   X.fillStyle='#ff6b6b';
   X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.fillText('Essa ação NÃO pode ser desfeita!',W/2,cardY+205);
+  X.fillText('Essa ação NÃO pode ser desfeita!',W/2,cardY+224);
 
   // Buttons
   const btnW=(cardW-48)/2;
@@ -3152,6 +3332,8 @@ function drawDeadUI(){
       rColor=getRarityColor(u.data.rarity);
     } else if(u.type==='achievement'){
       rColor='#ffd32a';
+    } else if(u.type==='mission'){
+      rColor='#7bed9f';
     } else {
       rColor='#70a1ff';
     }
@@ -3183,6 +3365,12 @@ function drawDeadUI(){
       X.textAlign='center';
       X.textBaseline='middle';
       X.fillText(u.data.icon,bx+30,by+bh/2);
+    } else if(u.type==='mission'){
+      X.fillStyle=rColor;
+      X.font='30px sans-serif';
+      X.textAlign='center';
+      X.textBaseline='middle';
+      X.fillText(u.data.icon || '🌠',bx+30,by+bh/2);
     } else {
       X.save();
       X.beginPath();
@@ -3198,6 +3386,7 @@ function drawDeadUI(){
     X.font='bold 11px -apple-system, system-ui, sans-serif';
     let label='🎉 DESBLOQUEADO!';
     if(u.type==='achievement')label='🏆 CONQUISTA!';
+    if(u.type==='mission')label='🌠 MISSÃO COMPLETA!';
     X.fillText(label,bx+58,by+20);
 
     X.fillStyle='#fff';
@@ -3212,6 +3401,10 @@ function drawDeadUI(){
       X.fillStyle='rgba(255,255,255,0.7)';
       X.font='10px -apple-system, system-ui, sans-serif';
       X.fillText(u.data.desc,bx+58,by+58);
+    } else if(u.type==='mission'){
+      X.fillStyle='#7bed9f';
+      X.font='bold 10px -apple-system, system-ui, sans-serif';
+      X.fillText('MISSÃO DO DIA',bx+58,by+58);
     } else {
       X.fillStyle='#70a1ff';
       X.font='bold 10px -apple-system, system-ui, sans-serif';
@@ -3222,6 +3415,8 @@ function drawDeadUI(){
     X.font='10px -apple-system, system-ui, sans-serif';
     if(u.type==='achievement'){
       X.fillText('Veja em estatísticas',bx+58,by+74);
+    } else if(u.type==='mission'){
+      X.fillText(u.data.desc || 'Volte amanhã para outra missão',bx+58,by+74);
     } else {
       X.fillText('Equipe no menu principal',bx+58,by+74);
     }

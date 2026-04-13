@@ -1251,14 +1251,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(0.12);
+    setMusicVolume(0.95);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.08);
+    setMusicVolume(0.80);
   });
 }
 
@@ -1555,9 +1555,11 @@ function drawMissionInfoCard(x,y,w,compact){
   if(typeof ensureDailyMissionState==='function') ensureDailyMissionState();
   const mission = (typeof getDailyMissionTemplate==='function') ? getDailyMissionTemplate() : null;
   const event = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
-  if(!mission) return;
+  if(!mission) return false;
 
-  const h = compact ? 76 : 88;
+  const hasEvent = !!event;
+  const h = compact ? (hasEvent ? 72 : 60) : (hasEvent ? 84 : 70);
+
   X.save();
   X.globalAlpha=0.78;
   const bg=X.createLinearGradient(x,y,x,y+h);
@@ -1570,39 +1572,46 @@ function drawMissionInfoCard(x,y,w,compact){
   roundRect(x,y,w,h,12); X.stroke();
   X.globalAlpha=1;
 
-  X.textAlign='left'; X.textBaseline='middle';
+  X.textAlign='left';
+  X.textBaseline='middle';
   const pad=12;
-  if(event){
+  let titleY = y + 18;
+
+  if(hasEvent){
     X.fillStyle=event.color;
     X.font='bold 11px -apple-system, system-ui, sans-serif';
-    X.fillText(event.icon + ' ' + event.name.toUpperCase(), x+pad, y+16);
-    X.fillStyle='rgba(255,255,255,0.58)';
-    X.font='10px -apple-system, system-ui, sans-serif';
-    X.fillText(event.desc, x+pad, y+30);
+    X.fillText(event.icon + ' ' + event.name.toUpperCase(), x+pad, titleY);
+    titleY += compact ? 18 : 22;
   }
 
   const progressText = (typeof getDailyMissionProgressText==='function') ? getDailyMissionProgressText() : '0/0';
   const progressRatio = (typeof getDailyMissionProgress==='function') ? Math.min(1, getDailyMissionProgress()/mission.target) : 0;
   const done = !!(dailyMissionState && dailyMissionState.completed);
-  const titleY = compact ? y+48 : y+54;
 
   X.fillStyle=done ? '#7bed9f' : '#ffd32a';
   X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.fillText((done?'✅ ':'🎯 ') + 'MISSÃO DO DIA', x+pad, titleY-10);
+  X.fillText((done?'✅ ':'🎯 ') + 'MISSÃO DO DIA', x+pad, titleY);
+
   X.fillStyle='#fff';
   X.font='bold 12px -apple-system, system-ui, sans-serif';
-  X.fillText(mission.desc, x+pad, titleY+6);
+  X.fillText(mission.desc, x+pad, titleY + 16);
 
   const barX=x+pad, barY=y+h-18, barW=w-pad*2, barH=8;
   X.fillStyle='rgba(255,255,255,0.12)';
   roundRect(barX,barY,barW,barH,4); X.fill();
-  X.fillStyle=done ? '#7bed9f' : '#ffd32a';
-  roundRect(barX,barY,Math.max(8,barW*progressRatio),barH,4); X.fill();
+
+  const fillW = progressRatio > 0 ? Math.max(8, barW*progressRatio) : 0;
+  if(fillW > 0){
+    X.fillStyle=done ? '#7bed9f' : '#ffd32a';
+    roundRect(barX,barY,fillW,barH,4); X.fill();
+  }
+
   X.fillStyle='rgba(255,255,255,0.72)';
   X.font='bold 10px -apple-system, system-ui, sans-serif';
   X.textAlign='right';
   X.fillText(progressText, x+w-pad, barY-4);
   X.restore();
+  return true;
 }
 
 function drawMainMenu(){
@@ -2726,19 +2735,18 @@ function drawSettingsMenu(){
   const contentW = Math.min(W*0.85, 320);
   const contentX = (W-contentW)/2;
 
-  // Account info section
-  if(currentUser){
-    X.fillStyle='#ffd32a';
-    X.font='bold 11px -apple-system, system-ui, sans-serif';
-    X.textAlign='left';
-    X.fillText('CONTA',contentX,curY);
-    curY+=16;
+  // Conta
+  X.fillStyle='#ff6b9d';
+  X.font='bold 11px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('CONTA',contentX,curY);
+  curY+=16;
 
-    // Info card
+  if(currentUser){
     X.fillStyle='rgba(0,0,0,0.5)';
     roundRect(contentX,curY,contentW,50,8);
     X.fill();
-    X.strokeStyle='rgba(255,211,42,0.3)';
+    X.strokeStyle='rgba(255,107,157,0.35)';
     X.lineWidth=1;
     roundRect(contentX,curY,contentW,50,8);
     X.stroke();
@@ -2746,11 +2754,11 @@ function drawSettingsMenu(){
     X.fillStyle='rgba(255,255,255,0.5)';
     X.font='10px -apple-system, system-ui, sans-serif';
     X.fillText('Apelido:',contentX+12,curY+14);
+
     X.fillStyle='#fff';
     X.font='bold 14px -apple-system, system-ui, sans-serif';
     X.fillText(playerName||'(sem apelido)',contentX+12,curY+30);
 
-    // Email
     if(currentUser.email){
       X.fillStyle='rgba(255,255,255,0.4)';
       X.font='9px -apple-system, system-ui, sans-serif';
@@ -2760,65 +2768,58 @@ function drawSettingsMenu(){
     }
     curY+=60;
 
-    // Change nickname button
     drawSettingsBtn(contentX,curY,contentW,'Trocar apelido','✏','#00f5d4',()=>{
       nicknameBuffer='';
       nicknameError='';
       menuScreen='changeNickname';
     });
     curY+=44;
+
+    drawSettingsBtn(contentX,curY,contentW,'Sair da conta','↩','#ff6b6b',()=>{
+      signOut();
+    });
+    curY+=52;
+  } else {
+    drawSettingsBtn(contentX,curY,contentW,'Entrar com Google','🌐','#00f5d4',()=>{
+      signInWithGoogle();
+    });
+    curY+=52;
   }
 
-  // Sound section
+  // Áudio
   X.fillStyle='#70a1ff';
   X.font='bold 11px -apple-system, system-ui, sans-serif';
   X.textAlign='left';
   X.fillText('ÁUDIO',contentX,curY);
   curY+=16;
 
-  // Music volume slider
   drawSlider(contentX,curY,contentW,'Música',musicVol,(v)=>{
     musicVol=v;
-    setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.66);
+    setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75);
     saveData();
   });
   curY+=50;
 
-  // SFX volume slider
   drawSlider(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{
     sfxVol=v;
     saveData();
-    // Play a test tone
     if(actx && sfxVol>0) playTone(600,0.1,'sine',0.15);
   });
   curY+=50;
 
-  // Mute toggle
   drawToggle(contentX,curY,contentW,'Silenciar tudo',muted,()=>{
     toggleMute();
   });
   curY+=44;
-
-  // Vibration section
-  X.fillStyle='#ffd32a';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('OUTROS',contentX,curY);
-  curY+=16;
 
   drawToggle(contentX,curY,contentW,'Vibração',vibrationOn,()=>{
     vibrationOn = !vibrationOn;
     saveData();
     if(vibrationOn) vibrate(30);
   });
-  curY+=44;
+  curY+=52;
 
-  X.fillStyle='#ff9f43';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('REDE',contentX,curY);
-  curY+=16;
-
+  // Status de rede
   X.fillStyle='rgba(0,0,0,0.5)';
   roundRect(contentX,curY,contentW,42,8);
   X.fill();
@@ -2834,27 +2835,20 @@ function drawSettingsMenu(){
   X.fillText((typeof hasPendingScoreSubmission === 'function' && hasPendingScoreSubmission())?'Seu melhor score será enviado quando voltar a internet.':'Ranking e login sincronizam quando houver conexão.',contentX+12,curY+29);
   curY+=52;
 
-  // App / install section
-  X.fillStyle='#7bed9f';
-  X.font='bold 11px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText('APP',contentX,curY);
-  curY+=16;
-
+  // Instalação
   if(!isStandaloneApp && (canInstallApp || canShowIosInstallHelp)){
     drawSettingsBtn(contentX,curY,contentW,canInstallApp?'Instalar app':'Como instalar no iPhone','⬇','#7bed9f',()=>{
       promptInstallApp();
     });
     curY+=44;
+
+    X.fillStyle='rgba(255,255,255,0.45)';
+    X.font='10px -apple-system, system-ui, sans-serif';
+    X.textAlign='left';
+    X.fillText(pwaStatusText||'Abra no navegador do celular para instalar',contentX,curY+4);
+    curY+=24;
   }
 
-  X.fillStyle='rgba(255,255,255,0.45)';
-  X.font='10px -apple-system, system-ui, sans-serif';
-  X.textAlign='left';
-  X.fillText(pwaStatusText||'Abra no navegador do celular para instalar',contentX,curY+4);
-  curY+=24;
-
-  // Reset progress button
   drawSettingsBtn(contentX,curY,contentW,'Resetar progresso local','↻','#ffa502',()=>{
     if(confirm('Isso vai apagar suas skins, fundos, conquistas e estatísticas locais. Continuar?')){
       resetLocalProgress();
@@ -2862,7 +2856,6 @@ function drawSettingsMenu(){
   });
   curY+=44;
 
-  // Delete account button (danger)
   if(currentUser){
     drawSettingsBtn(contentX,curY,contentW,'EXCLUIR CONTA','⚠','#ff4757',()=>{
       menuScreen='confirmDelete';
@@ -3311,13 +3304,6 @@ function drawDeadUI(){
     X.globalAlpha=f;
   }
 
-  if(deathT>0.55){
-    X.globalAlpha=f*(0.65+Math.sin(menuT*6)*0.15);
-    X.fillStyle='#00f5d4';
-    X.font='bold 16px -apple-system, system-ui, sans-serif';
-    X.fillText('TOQUE EM QUALQUER LUGAR PARA JOGAR DE NOVO',W/2,H*0.79);
-    X.globalAlpha=f;
-  }
 
   // Unlock notification
   if(pendingUnlocks.length>0 && deathT>0.8){
@@ -3457,7 +3443,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.08);
+        setMusicVolume(0.95);
       });
     } else {
       // Smaller menu btn alongside
@@ -3466,7 +3452,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.08);
+        setMusicVolume(0.95);
       });
     }
   }

@@ -82,9 +82,28 @@ const BACKGROUNDS = {
   cosmic:   {name:'Cósmico',unlock:1000,type:'cosmic'},
 };
 
+// ============ MISSÕES / EVENTOS ============
 let dailyMissionState = null;
 let currentEventState = null;
 let missionsCompletedTotal = 0;
+
+const DAILY_MISSION_TEMPLATES = [
+  {id:'play_3', icon:'🎯', name:'Piloto do Dia', desc:'Termine 3 partidas hoje', metric:'games_finished', target:3, mode:'count'},
+  {id:'score_20', icon:'🚀', name:'Arranque Perfeito', desc:'Faça 20 pontos em uma única run', metric:'best_run_score', target:20, mode:'max'},
+  {id:'gold_2', icon:'⭐', name:'Caça ao Ouro', desc:'Capture 2 nós dourados hoje', metric:'gold_captures', target:2, mode:'count'},
+  {id:'combo_5', icon:'🔥', name:'Ritmo Orbital', desc:'Faça combo x5 em uma run', metric:'best_run_combo', target:5, mode:'max'},
+  {id:'phase_3', icon:'🛡', name:'Avanço Seguro', desc:'Chegue à fase 3 hoje', metric:'best_run_phase', target:3, mode:'max'},
+  {id:'powerup_2', icon:'⚡', name:'Energia Extra', desc:'Colete 2 power-ups hoje', metric:'powerups_collected', target:2, mode:'count'},
+];
+
+const DAILY_REWARD_POOL = [
+  {type:'skin', key:'azul'},
+  {type:'skin', key:'verde'},
+  {type:'skin', key:'rosa'},
+  {type:'skin', key:'roxo'},
+  {type:'bg', key:'nebula'},
+  {type:'bg', key:'galaxy'},
+];
 
 // Load saved data
 try {
@@ -149,29 +168,8 @@ function checkUnlocks() {
   return newUnlocks;
 }
 checkUnlocks();
-ensureDailyMissionState();
 
 let pendingUnlocks = [];
-
-// ============ MISSÕES / EVENTOS ============
-const DAILY_MISSION_TEMPLATES = [
-  {id:'play_3', icon:'🎯', name:'Piloto do Dia', desc:'Termine 3 partidas hoje', metric:'games_finished', target:3, mode:'count'},
-  {id:'score_20', icon:'🚀', name:'Arranque Perfeito', desc:'Faça 20 pontos em uma única run', metric:'best_run_score', target:20, mode:'max'},
-  {id:'gold_2', icon:'⭐', name:'Caça ao Ouro', desc:'Capture 2 nós dourados hoje', metric:'gold_captures', target:2, mode:'count'},
-  {id:'combo_5', icon:'🔥', name:'Ritmo Orbital', desc:'Faça combo x5 em uma run', metric:'best_run_combo', target:5, mode:'max'},
-  {id:'phase_3', icon:'🛡', name:'Avanço Seguro', desc:'Chegue à fase 3 hoje', metric:'best_run_phase', target:3, mode:'max'},
-  {id:'powerup_2', icon:'⚡', name:'Energia Extra', desc:'Colete 2 power-ups hoje', metric:'powerups_collected', target:2, mode:'count'},
-];
-
-const DAILY_REWARD_POOL = [
-  {type:'skin', key:'azul'},
-  {type:'skin', key:'verde'},
-  {type:'skin', key:'rosa'},
-  {type:'skin', key:'roxo'},
-  {type:'bg', key:'nebula'},
-  {type:'bg', key:'galaxy'},
-];
-
 
 function getLocalDayKey(date){
   const d = date || new Date();
@@ -233,6 +231,8 @@ function ensureDailyMissionState(force){
   currentEventState = getEventForDay(today);
   return dailyMissionState;
 }
+
+ensureDailyMissionState();
 
 function getDailyMissionTemplate(){
   ensureDailyMissionState();

@@ -17,9 +17,9 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ============ AUDIO ============
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const MUSIC_BASE_GAIN = 0.12;
+const MUSIC_BASE_GAIN = 0.18;
 let actx = null;
-let musicSceneLevel = 0.66;
+let musicSceneLevel = 0.78;
 function getMusicTargetGain(sceneLevel = musicSceneLevel) {
   return muted ? 0 : MUSIC_BASE_GAIN * clamp(sceneLevel, 0, 1) * clamp(musicVol, 0, 1);
 }
@@ -48,7 +48,7 @@ function initMusic() {
 
   // Master music gain (low volume)
   musicGain = actx.createGain();
-  musicGain.gain.value = getMusicTargetGain(0.66);
+  musicGain.gain.value = getMusicTargetGain(0.78);
 
   // Reverb-like delay for spacious feel
   const delay = actx.createDelay(2);

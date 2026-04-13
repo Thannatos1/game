@@ -1,22 +1,25 @@
-const CACHE_NAME = 'orbita-pwa-v1';
+const CACHE_NAME = 'orbita-pwa-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  './sw.js',
   './js/core.js',
   './js/services.js',
   './js/pwa.js',
   './js/data.js',
   './js/game.js',
   './js/render.js',
-  './js/main.js'
+  './js/main.js',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -34,21 +37,32 @@ self.addEventListener('fetch', event => {
 
   if (req.method !== 'GET') return;
 
-  // Navegação: tenta rede e cai para cache
-  if (req.mode === 'navigate') {
+  const isAppAsset =
+    url.origin === self.location.origin &&
+    (
+      url.pathname.endsWith('.js') ||
+      url.pathname.endsWith('.css') ||
+      url.pathname.endsWith('.html') ||
+      url.pathname.endsWith('.webmanifest') ||
+      url.pathname === '/' ||
+      url.pathname.endsWith('index.html')
+    );
+
+  if (isAppAsset || req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
         .then(resp => {
-          const copy = resp.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy)).catch(() => {});
+          if (resp && resp.status === 200) {
+            const copy = resp.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
+          }
           return resp;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
     );
     return;
   }
 
-  // Assets do próprio app: cache-first com refresh em background
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(req).then(cached => {

@@ -1,28 +1,29 @@
-# Órbita modularizado
+# Órbita - versão modular fiel
+
+Baseado diretamente no arquivo original enviado pelo usuário, preservando o comportamento do jogo.
 
 ## Estrutura
 - `index.html`
-- `js/main.js`
-- `js/game.js`
-- `js/data.js`
+- `js/core.js`
 - `js/services.js`
-- `supabase_hardening.sql`
+- `js/data.js`
+- `js/game.js`
+- `js/render.js`
+- `js/main.js`
 
-## Correções aplicadas
-- Acessórios/skins que usavam `r` fora de escopo agora recebem o raio corretamente.
-- `totalGames` agora incrementa apenas quando a partida termina.
-- `devicePixelRatio` é recalculado no `resize()`.
-- O reset do progresso local usa modal dentro do canvas, sem `confirm()` nativo.
-- O código foi dividido em módulos básicos para manutenção.
+## Correções mínimas aplicadas
+1. Corrigido crash de render em skins com acessórios que usavam a variável `r` fora de escopo.
+2. Corrigida contagem duplicada de partidas (`totalGames`) ao iniciar/reiniciar.
+3. `devicePixelRatio` passa a ser recalculado em `resize()`.
 
-## Como rodar
-Use um servidor estático local, por exemplo:
-
-```bash
-python -m http.server 8000
-```
-
-Depois abra `http://localhost:8000/orbita_modular/`.
+## O que foi preservado
+- gameplay
+- físicas
+- menus
+- áudio
+- sistema de ranking/auth
+- skins, fundos, conquistas
+- UI e timings
 
 ## Observação
-O pacote entregue é uma base modularizada com as correções principais. Como o projeto original era um arquivo único grande, esta versão prioriza estabilidade e organização em vez de reproduzir 100% de todas as telas e efeitos avançados do original.
+Abra via servidor estático (por exemplo, VS Code Live Server, `python -m http.server`, etc.).

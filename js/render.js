@@ -1250,14 +1250,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(0.92);
+    setMusicVolume(0.95);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.68);
+    setMusicVolume(0.75);
   });
 }
 
@@ -3452,7 +3452,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.68);
+        setMusicVolume(0.75);
       });
     } else {
       // Smaller menu btn alongside
@@ -3461,7 +3461,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.68);
+        setMusicVolume(0.75);
       });
     }
   }

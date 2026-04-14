@@ -1839,14 +1839,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(1.00);
+    setMusicVolume(0.95);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.90);
+    setMusicVolume(0.80);
   });
 }
 
@@ -2136,6 +2136,7 @@ function drawMenuUI(){
   else if(menuScreen==='changeNickname')drawChangeNicknameScreen();
   else if(menuScreen==='confirmDelete')drawConfirmDeleteScreen();
   else if(menuScreen==='installHelp')drawInstallHelpScreen();
+  else if(menuScreen==='debug')drawDebugMenu();
 }
 
 
@@ -2396,7 +2397,7 @@ let menuScrollMinY = 0;
 let menuScrollMaxY = 0;
 
 function isMenuScreenScrollable(){
-  return menuScreen==='skins' || menuScreen==='backgrounds';
+  return menuScreen==='skins' || menuScreen==='backgrounds' || menuScreen==='debug';
 }
 
 function syncMenuScrollState(){
@@ -2429,6 +2430,7 @@ function updateMenuScrollAnimation(){
 function getMenuScrollViewport(){
   if(menuScreen==='skins') return { top:H*0.12, bottom:H-18 };
   if(menuScreen==='backgrounds') return { top:H*0.12, bottom:H-18 };
+  if(menuScreen==='debug') return { top:H*0.12, bottom:H-18 };
   return null;
 }
 
@@ -3627,27 +3629,39 @@ function drawSettingsMenu(){
   X.fillText('ÁUDIO',contentX,curY);
   curY+=16;
 
-  drawSlider(contentX,curY,contentW,'Música do menu',menuMusicVol,(v)=>{
-    menuMusicVol=v;
-    musicVol=menuMusicVol;
-    if(state===ST.MENU || state===ST.DEAD) setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.90);
-    saveData();
-  });
-  curY+=50;
+  const hasSplitMusic = (typeof menuMusicVol !== 'undefined') && (typeof gameMusicVol !== 'undefined');
+  if(hasSplitMusic){
+    drawVolumeStepper(contentX,curY,contentW,'Música do menu',menuMusicVol,(v)=>{
+      menuMusicVol=v;
+      musicVol=v;
+      if(typeof refreshMusicGain==='function') refreshMusicGain(0.12);
+      else setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75);
+      saveData();
+    }, '#70a1ff');
+    curY+=48;
 
-  drawSlider(contentX,curY,contentW,'Música do jogo',gameMusicVol,(v)=>{
-    gameMusicVol=v;
-    if(state===ST.PLAY || state===ST.PAUSE) setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 1.00);
-    saveData();
-  });
-  curY+=50;
+    drawVolumeStepper(contentX,curY,contentW,'Música do jogo',gameMusicVol,(v)=>{
+      gameMusicVol=v;
+      if(typeof refreshMusicGain==='function') refreshMusicGain(0.12);
+      saveData();
+    }, '#00f5d4');
+    curY+=48;
+  } else {
+    drawVolumeStepper(contentX,curY,contentW,'Música',musicVol,(v)=>{
+      musicVol=v;
+      if(typeof refreshMusicGain==='function') refreshMusicGain(0.12);
+      else setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75);
+      saveData();
+    }, '#70a1ff');
+    curY+=48;
+  }
 
-  drawSlider(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{
+  drawVolumeStepper(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{
     sfxVol=v;
     saveData();
     if(actx && sfxVol>0) playTone(600,0.1,'sine',0.15);
-  });
-  curY+=50;
+  }, '#c084fc');
+  curY+=52;
 
   drawToggle(contentX,curY,contentW,'Silenciar tudo',muted,()=>{
     toggleMute();
@@ -3676,6 +3690,11 @@ function drawSettingsMenu(){
   X.font='10px -apple-system, system-ui, sans-serif';
   X.fillText((typeof hasPendingScoreSubmission === 'function' && hasPendingScoreSubmission())?'Seu melhor score será enviado quando voltar a internet.':'Ranking e login sincronizam quando houver conexão.',contentX+12,curY+29);
   curY+=52;
+
+  drawSettingsBtn(contentX,curY,contentW,'Menu debug / testes','🧪','#c084fc',()=>{
+    menuScreen='debug';
+  });
+  curY+=44;
 
   // Instalação
   if(!isStandaloneApp && (canInstallApp || canShowIosInstallHelp)){
@@ -3787,15 +3806,6 @@ function drawSettingsBtn(x,y,w,label,icon,color,action){
 
 function drawSlider(x,y,w,label,value,onChange){
   const h=44;
-  const step=0.05;
-  const btnSize=24;
-  const btnGap=10;
-  const trackX=x+btnSize+btnGap;
-  const trackW=w-(btnSize+btnGap)*2;
-  const trackY=y+26;
-  const trackH=6;
-  const knobY=trackY+trackH/2;
-
   // Label
   X.fillStyle='#fff';
   X.font='bold 12px -apple-system, system-ui, sans-serif';
@@ -3804,74 +3814,52 @@ function drawSlider(x,y,w,label,value,onChange){
   X.fillText(label,x,y+8);
 
   // Value %
-  X.fillStyle='rgba(255,255,255,0.55)';
+  X.fillStyle='rgba(255,255,255,0.5)';
   X.font='10px -apple-system, system-ui, sans-serif';
   X.textAlign='right';
   X.fillText(Math.round(value*100)+'%',x+w,y+8);
 
-  // Minus / plus buttons
-  const btnY=y+14;
-  drawMiniStepBtn(x,btnY,btnSize,btnSize,'−',()=>onChange(clamp(value-step,0,1)));
-  drawMiniStepBtn(x+w-btnSize,btnY,btnSize,btnSize,'+',()=>onChange(clamp(value+step,0,1)));
-
   // Track
+  const trackY=y+26;
+  const trackH=6;
   X.fillStyle='rgba(0,0,0,0.5)';
-  roundRect(trackX,trackY,trackW,trackH,3);
+  roundRect(x,trackY,w,trackH,3);
   X.fill();
 
   // Fill
-  const fillW=trackW*value;
+  const fillW=w*value;
   if(fillW>0){
-    const g=X.createLinearGradient(trackX,trackY,trackX+fillW,trackY);
+    const g=X.createLinearGradient(x,trackY,x+fillW,trackY);
     g.addColorStop(0,'#00f5d4');
     g.addColorStop(1,'#70a1ff');
     X.fillStyle=g;
-    roundRect(trackX,trackY,fillW,trackH,3);
+    roundRect(x,trackY,fillW,trackH,3);
     X.fill();
   }
 
   // Knob
-  const knobX=trackX+fillW;
+  const knobX=x+fillW;
   X.shadowColor='#00f5d4';
   X.shadowBlur=8;
   X.fillStyle='#fff';
   X.beginPath();
-  X.arc(knobX,knobY,9,0,Math.PI*2);
+  X.arc(knobX,trackY+trackH/2,9,0,Math.PI*2);
   X.fill();
   X.shadowBlur=0;
   X.strokeStyle='#00f5d4';
   X.lineWidth=2;
   X.beginPath();
-  X.arc(knobX,knobY,9,0,Math.PI*2);
+  X.arc(knobX,trackY+trackH/2,9,0,Math.PI*2);
   X.stroke();
 
-  // Touch zone for dragging
+  // Touch zone (bigger than visual)
   menuBtnAreas.push({
-    x:trackX-6, y:trackY-15, w:trackW+12, h:36,
+    x:x-5, y:trackY-15, w:w+10, h:36,
     action:(tapX)=>{
-      const newV = clamp((tapX-trackX)/trackW, 0, 1);
+      const newV = clamp((tapX-x)/w, 0, 1);
       onChange(newV);
     }
   });
-}
-
-function drawMiniStepBtn(x,y,w,h,label,action){
-  X.globalAlpha=0.85;
-  X.fillStyle='rgba(0,0,0,0.55)';
-  roundRect(x,y,w,h,7);
-  X.fill();
-  X.strokeStyle='rgba(255,255,255,0.22)';
-  X.lineWidth=1;
-  roundRect(x,y,w,h,7);
-  X.stroke();
-  X.globalAlpha=1;
-  X.fillStyle='#fff';
-  X.font='bold 16px -apple-system, system-ui, sans-serif';
-  X.textAlign='center';
-  X.textBaseline='middle';
-  X.fillText(label,x+w/2,y+h/2+0.5);
-
-  menuBtnAreas.push({x,y,w,h,action});
 }
 
 function drawToggle(x,y,w,label,isOn,action){
@@ -3910,6 +3898,297 @@ function drawToggle(x,y,w,label,isOn,action){
   X.shadowBlur=0;
 
   menuBtnAreas.push({x,y,w,h,action});
+}
+
+
+function drawVolumeStepper(x,y,w,label,value,onChange,color){
+  const h=40;
+  const accent=color||'#70a1ff';
+  const vv=clamp(value||0,0,1);
+
+  X.fillStyle='rgba(0,0,0,0.5)';
+  roundRect(x,y,w,h,8);
+  X.fill();
+  X.strokeStyle='rgba(255,255,255,0.12)';
+  X.lineWidth=1;
+  roundRect(x,y,w,h,8);
+  X.stroke();
+
+  X.fillStyle='#fff';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.textBaseline='middle';
+  X.fillText(label,x+12,y+12);
+
+  const valueText=Math.round(vv*100)+'%';
+  X.fillStyle='rgba(255,255,255,0.55)';
+  X.font='10px -apple-system, system-ui, sans-serif';
+  X.fillText(valueText,x+12,y+28);
+
+  const trackX=x+92, trackY=y+18, trackW=Math.max(70,w-160), trackH=6;
+  X.fillStyle='rgba(255,255,255,0.08)';
+  roundRect(trackX,trackY,trackW,trackH,3); X.fill();
+  const fillW=Math.max(0,trackW*vv);
+  if(fillW>0){
+    const g=X.createLinearGradient(trackX,trackY,trackX+fillW,trackY);
+    g.addColorStop(0,accent);
+    g.addColorStop(1,'#ffffff');
+    X.fillStyle=g;
+    roundRect(trackX,trackY,fillW,trackH,3); X.fill();
+  }
+
+  const minusX=x+w-66, plusX=x+w-34, btnY=y+8, btnS=24;
+  drawMiniStepButton(minusX,btnY,btnS,'−',accent,()=>onChange(clamp(vv-0.05,0,1)));
+  drawMiniStepButton(plusX,btnY,btnS,'+',accent,()=>onChange(clamp(vv+0.05,0,1)));
+}
+
+function drawMiniStepButton(x,y,size,label,color,action){
+  X.globalAlpha=0.85;
+  X.fillStyle='rgba(20,20,35,0.9)';
+  roundRect(x,y,size,size,7); X.fill();
+  X.strokeStyle=color; X.lineWidth=1.4; roundRect(x,y,size,size,7); X.stroke();
+  X.globalAlpha=1;
+  X.fillStyle='#fff';
+  X.font='bold 16px -apple-system, system-ui, sans-serif';
+  X.textAlign='center'; X.textBaseline='middle';
+  X.fillText(label,x+size/2,y+size/2+0.5);
+  menuBtnAreas.push({x,y,w:size,h:size,action});
+}
+
+function pushDebugArea(x,y,w,h,action){
+  const screenY = y + menuScrollY;
+  menuBtnAreas.push({x,y:screenY,w,h,action});
+}
+
+function drawDebugSectionTitle(x,y,text,color){
+  X.fillStyle=color||'#c084fc';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.textBaseline='middle';
+  X.fillText(text,x,y);
+}
+
+function drawDebugCard(x,y,w,h){
+  X.globalAlpha=0.82;
+  const g=X.createLinearGradient(x,y,x,y+h);
+  g.addColorStop(0,'rgba(8,10,26,0.84)');
+  g.addColorStop(1,'rgba(0,0,0,0.92)');
+  X.fillStyle=g;
+  roundRect(x,y,w,h,12); X.fill();
+  X.strokeStyle='rgba(255,255,255,0.12)';
+  X.lineWidth=1;
+  roundRect(x,y,w,h,12); X.stroke();
+  X.globalAlpha=1;
+}
+
+function drawDebugActionBtn(x,y,w,h,label,color,action,small){
+  X.globalAlpha=0.86;
+  const g=X.createLinearGradient(x,y,x,y+h);
+  g.addColorStop(0,'rgba(0,0,0,0.58)');
+  g.addColorStop(1,'rgba(0,0,0,0.82)');
+  X.fillStyle=g;
+  roundRect(x,y,w,h,9); X.fill();
+  X.strokeStyle=color; X.lineWidth=1.4; roundRect(x,y,w,h,9); X.stroke();
+  X.globalAlpha=1;
+  X.fillStyle='#fff';
+  X.font=(small?'bold 11px':'bold 12px')+' -apple-system, system-ui, sans-serif';
+  X.textAlign='center'; X.textBaseline='middle';
+  X.fillText(label,x+w/2,y+h/2);
+  pushDebugArea(x,y,w,h,action);
+}
+
+function debugEnsureAchievements(count){
+  const all = Object.keys(ACHIEVEMENTS||{});
+  const next = all.slice(0, clamp(count,0,all.length));
+  achievements = Array.from(new Set([...(achievements||[]), ...next]));
+}
+
+function applyDebugPreset(kind){
+  if(kind==='starter'){
+    best = Math.max(best, 30);
+    totalGames = Math.max(totalGames, 5);
+    highestPhase = Math.max(highestPhase, 3);
+    bestComboEver = Math.max(bestComboEver, 5);
+    totalGoldCaptured = Math.max(totalGoldCaptured, 2);
+  } else if(kind==='advanced'){
+    best = Math.max(best, 120);
+    totalGames = Math.max(totalGames, 20);
+    highestPhase = Math.max(highestPhase, 6);
+    bestComboEver = Math.max(bestComboEver, 10);
+    totalGoldCaptured = Math.max(totalGoldCaptured, 10);
+    missionsCompletedTotal = Math.max(missionsCompletedTotal||0, 5);
+    debugEnsureAchievements(6);
+  } else if(kind==='masterpiece'){
+    best = Math.max(best, 300);
+    totalGames = Math.max(totalGames, 60);
+    highestPhase = Math.max(highestPhase, 6);
+    bestComboEver = Math.max(bestComboEver, 15);
+    totalGoldCaptured = Math.max(totalGoldCaptured, 30);
+    missionsCompletedTotal = Math.max(missionsCompletedTotal||0, 20);
+    achievements = Object.keys(ACHIEVEMENTS||{});
+    zenUnlocked = true;
+  }
+  if(typeof checkUnlocks==='function') checkUnlocks();
+  if(typeof saveData==='function') saveData();
+}
+
+function debugUnlockAllSkins(){
+  unlockedSkins = Array.from(new Set(Object.keys(SKINS||{})));
+  if(!unlockedSkins.includes('default')) unlockedSkins.unshift('default');
+  if(typeof saveData==='function') saveData();
+}
+
+function debugUnlockAllBackgrounds(){
+  unlockedBgs = Array.from(new Set(Object.keys(BACKGROUNDS||{})));
+  if(!unlockedBgs.includes('space')) unlockedBgs.unshift('space');
+  if(typeof saveData==='function') saveData();
+}
+
+function debugUnlockAll(){
+  debugUnlockAllSkins();
+  debugUnlockAllBackgrounds();
+  zenUnlocked = true;
+  achievements = Object.keys(ACHIEVEMENTS||{});
+  best = Math.max(best, 300);
+  bestComboEver = Math.max(bestComboEver, 15);
+  highestPhase = Math.max(highestPhase, 6);
+  totalGoldCaptured = Math.max(totalGoldCaptured, 30);
+  missionsCompletedTotal = Math.max(missionsCompletedTotal||0, 20);
+  if(typeof saveData==='function') saveData();
+}
+
+function debugSelectBackground(bgKey){
+  if(!bgKey || !BACKGROUNDS[bgKey]) return;
+  if(!unlockedBgs.includes(bgKey)) unlockedBgs.push(bgKey);
+  selectedBg = bgKey;
+  if(typeof saveData==='function') saveData();
+}
+
+function debugPlaySfx(kind){
+  if(typeof initAudio==='function') initAudio();
+  if(kind==='release' && typeof sndRelease==='function') sndRelease();
+  else if(kind==='capture' && typeof sndCapture==='function') sndCapture(2,2);
+  else if(kind==='gold' && typeof sndCapture==='function') sndCapture(5,5);
+  else if(kind==='phase' && typeof sndPhase==='function') sndPhase();
+  else if(kind==='die' && typeof sndDie==='function') sndDie();
+  else if(kind==='record' && typeof sndRecord==='function') sndRecord();
+}
+
+function drawDebugMenu(){
+  X.textAlign='center'; X.textBaseline='middle';
+  X.fillStyle='#e0e0ff'; X.font='bold 28px -apple-system, system-ui, sans-serif';
+  X.shadowColor='#c084fc'; X.shadowBlur=15;
+  X.fillText('🧪 DEBUG / TESTES', W/2, H*0.06);
+  X.shadowBlur=0;
+
+  X.fillStyle='rgba(255,255,255,0.5)';
+  X.font='11px -apple-system, system-ui, sans-serif';
+  X.fillText('Ferramentas locais para validar fundo, áudio e desbloqueios rápido', W/2, H*0.09);
+
+  drawBackBtn();
+
+  const contentW = Math.min(W*0.88, 360);
+  const contentX = (W-contentW)/2;
+  let curY = H*0.13;
+  const contentStartY = curY;
+  const viewport = beginMenuScrollClip();
+
+  drawDebugCard(contentX,curY,contentW,60);
+  X.fillStyle='rgba(255,255,255,0.86)';
+  X.font='bold 12px -apple-system, system-ui, sans-serif';
+  X.textAlign='left';
+  X.fillText('Use isso só para teste local.', contentX+14, curY+18);
+  X.fillStyle='rgba(255,255,255,0.55)';
+  X.font='11px -apple-system, system-ui, sans-serif';
+  X.fillText('Nada aqui deveria ser usado como regra de produção.', contentX+14, curY+38);
+  curY += 76;
+
+  drawDebugSectionTitle(contentX, curY, 'RUN RÁPIDA', '#00f5d4');
+  curY += 14;
+  const gap=10;
+  const halfW=(contentW-gap)/2;
+  drawDebugActionBtn(contentX,curY,halfW,36,'▶ NORMAL','#00f5d4',()=>startRun(false,'debug_normal'),false);
+  drawDebugActionBtn(contentX+halfW+gap,curY,halfW,36,'☯ ZEN','#7bed9f',()=>startRun(true,'debug_zen'),false);
+  curY += 48;
+
+  drawDebugSectionTitle(contentX, curY, 'ÁUDIO', '#70a1ff');
+  curY += 14;
+  const hasSplitMusic=(typeof menuMusicVol !== 'undefined') && (typeof gameMusicVol !== 'undefined');
+  if(hasSplitMusic){
+    drawVolumeStepper(contentX,curY,contentW,'Música do menu',menuMusicVol,(v)=>{ menuMusicVol=v; musicVol=v; if(typeof refreshMusicGain==='function') refreshMusicGain(0.08); if(typeof saveData==='function') saveData(); }, '#70a1ff');
+    curY += 48;
+    drawVolumeStepper(contentX,curY,contentW,'Música do jogo',gameMusicVol,(v)=>{ gameMusicVol=v; if(typeof saveData==='function') saveData(); }, '#00f5d4');
+    curY += 48;
+  } else {
+    drawVolumeStepper(contentX,curY,contentW,'Música',musicVol,(v)=>{ musicVol=v; if(typeof refreshMusicGain==='function') refreshMusicGain(0.08); else if(typeof setMusicVolume==='function') setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75); if(typeof saveData==='function') saveData(); }, '#70a1ff');
+    curY += 48;
+  }
+  drawVolumeStepper(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{ sfxVol=v; if(typeof saveData==='function') saveData(); }, '#c084fc');
+  curY += 52;
+  const testLabels=[['RELEASE','release','#70a1ff'],['CAPTURA','capture','#00f5d4'],['OURO','gold','#ffd32a'],['FASE','phase','#ff6b9d'],['MORTE','die','#ff4757'],['RECORDE','record','#c084fc']];
+  const testW=(contentW-gap*2)/3;
+  for(let i=0;i<testLabels.length;i++){
+    const row=Math.floor(i/3), col=i%3;
+    const x=contentX+col*(testW+gap), y=curY+row*42;
+    const [label,key,color]=testLabels[i];
+    drawDebugActionBtn(x,y,testW,32,label,color,()=>debugPlaySfx(key),true);
+  }
+  curY += 92;
+
+  drawDebugSectionTitle(contentX, curY, 'FUNDOS', '#ffd32a');
+  curY += 14;
+  const bgKeys=Object.keys(BACKGROUNDS||{});
+  const bgCols=2;
+  const bgGap=10;
+  const bgW=(contentW-bgGap)/2;
+  const bgH=46;
+  for(let i=0;i<bgKeys.length;i++){
+    const k=bgKeys[i];
+    const bg=BACKGROUNDS[k];
+    const row=Math.floor(i/bgCols), col=i%bgCols;
+    const x=contentX+col*(bgW+bgGap), y=curY+row*(bgH+bgGap);
+    const selected=selectedBg===k;
+    X.globalAlpha=0.86;
+    X.fillStyle='rgba(0,0,0,0.55)'; roundRect(x,y,bgW,bgH,9); X.fill();
+    X.strokeStyle=selected?'#ffd32a':'rgba(255,255,255,0.16)'; X.lineWidth=selected?2:1; roundRect(x,y,bgW,bgH,9); X.stroke();
+    X.globalAlpha=1;
+    X.fillStyle=selected?'#ffd32a':'#fff';
+    X.font='bold 12px -apple-system, system-ui, sans-serif'; X.textAlign='left'; X.textBaseline='middle';
+    let name=String(bg.name||k); if(name.length>18) name=name.slice(0,17)+'…';
+    X.fillText(name, x+12, y+16);
+    X.fillStyle='rgba(255,255,255,0.48)'; X.font='10px -apple-system, system-ui, sans-serif';
+    X.fillText(selected?'SELECIONADO':'TOQUE PARA EQUIPAR', x+12, y+31);
+    pushDebugArea(x,y,bgW,bgH,()=>debugSelectBackground(k));
+  }
+  curY += Math.ceil(bgKeys.length/2)*(bgH+bgGap)+6;
+
+  drawDebugSectionTitle(contentX, curY, 'DESBLOQUEIOS / PRESETS', '#ff9f43');
+  curY += 14;
+  drawDebugActionBtn(contentX,curY,halfW,34,'PRESET INÍCIO','#70a1ff',()=>applyDebugPreset('starter'),false);
+  drawDebugActionBtn(contentX+halfW+gap,curY,halfW,34,'PRESET AVANÇADO','#00f5d4',()=>applyDebugPreset('advanced'),false);
+  curY += 44;
+  drawDebugActionBtn(contentX,curY,halfW,34,'PRESET OBRA-PRIMA','#ffd32a',()=>applyDebugPreset('masterpiece'),false);
+  drawDebugActionBtn(contentX+halfW+gap,curY,halfW,34,'LIBERAR TUDO','#ff6b9d',()=>debugUnlockAll(),false);
+  curY += 44;
+  drawDebugActionBtn(contentX,curY,halfW,34,'SKINS','#c084fc',()=>debugUnlockAllSkins(),false);
+  drawDebugActionBtn(contentX+halfW+gap,curY,halfW,34,'FUNDOS','#70a1ff',()=>debugUnlockAllBackgrounds(),false);
+  curY += 44;
+  drawDebugActionBtn(contentX,curY,contentW,36,'RESETAR PROGRESSO LOCAL','#ff4757',()=>{ if(confirm('Apagar progresso local de teste?')) resetLocalProgress(); },false);
+  curY += 50;
+
+  drawDebugSectionTitle(contentX, curY, 'ATALHOS', '#7bed9f');
+  curY += 14;
+  drawDebugActionBtn(contentX,curY,halfW,34,'ABRIR SKINS','#c084fc',()=>{menuScreen='skins';},false);
+  drawDebugActionBtn(contentX+halfW+gap,curY,halfW,34,'ABRIR FUNDOS','#70a1ff',()=>{menuScreen='backgrounds';},false);
+  curY += 44;
+  drawDebugActionBtn(contentX,curY,halfW,34,'ABRIR STATS','#ffd32a',()=>{menuScreen='stats';},false);
+  drawDebugActionBtn(contentX+halfW+gap,curY,halfW,34,'MENU PRINCIPAL','#a0a0c0',()=>{menuScreen='main';},false);
+  curY += 56;
+
+  endMenuScrollClip();
+  setMenuScrollBounds(contentStartY, curY, viewport);
+  drawMenuScrollBar(viewport);
+  drawMenuScrollFades(viewport);
 }
 
 function drawChangeNicknameScreen(){
@@ -4316,7 +4595,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.90);
+        setMusicVolume(0.95);
       });
     } else {
       // Smaller menu btn alongside
@@ -4325,7 +4604,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.90);
+        setMusicVolume(0.95);
       });
     }
   }

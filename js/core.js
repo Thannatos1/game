@@ -17,13 +17,19 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ============ AUDIO ============
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const MUSIC_BASE_GAIN = 0.90;
-const SFX_BASE_GAIN = 0.78;
+const MUSIC_BASE_GAIN = 0.88;
+const SFX_BASE_GAIN = 0.74;
 let actx = null;
 let musicSceneLevel = 0.90;
 let musicDuckGain = null;
+let musicGain = null;
+let musicMasterGain = null;
+let musicCompressor = null;
 let sfxGain = null;
 let sfxCompressor = null;
+let sfxOutputGain = null;
+let musicStarted = false;
+let musicNodes = [];
 
 function getCurrentMusicUserVolume() {
   const isGameplayContext = state === ST.PLAY || state === ST.PAUSE;
@@ -36,11 +42,24 @@ function getMusicTargetGain(sceneLevel = musicSceneLevel) {
 
 function refreshMusicGain(rampSeconds = 0.25) {
   if (musicGain && actx) {
+    musicGain.gain.cancelScheduledValues(actx.currentTime);
     musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + rampSeconds);
   }
 }
 
-function duckMusicTo(mult = 0.90, holdMs = 140, rampDown = 0.012, rampUp = 0.18) {
+function makeStereoNode(pan = 0) {
+  if (!actx) return null;
+  if (typeof actx.createStereoPanner === 'function') {
+    const p = actx.createStereoPanner();
+    p.pan.value = clamp(pan, -1, 1);
+    return p;
+  }
+  const g = actx.createGain();
+  g.gain.value = 1;
+  return g;
+}
+
+function duckMusicTo(mult = 0.88, holdMs = 140, rampDown = 0.012, rampUp = 0.18) {
   if (!musicDuckGain || !actx) return;
   const now = actx.currentTime;
   const holdSec = Math.max(0.04, holdMs / 1000);
@@ -54,18 +73,23 @@ function duckMusicTo(mult = 0.90, holdMs = 140, rampDown = 0.012, rampUp = 0.18)
 
 function initSfxBus() {
   if (!actx || sfxGain) return;
+
   sfxGain = actx.createGain();
   sfxGain.gain.value = SFX_BASE_GAIN;
 
   sfxCompressor = actx.createDynamicsCompressor();
-  sfxCompressor.threshold.value = -22;
-  sfxCompressor.knee.value = 18;
-  sfxCompressor.ratio.value = 3.5;
-  sfxCompressor.attack.value = 0.003;
-  sfxCompressor.release.value = 0.20;
+  sfxCompressor.threshold.value = -24;
+  sfxCompressor.knee.value = 16;
+  sfxCompressor.ratio.value = 3.8;
+  sfxCompressor.attack.value = 0.004;
+  sfxCompressor.release.value = 0.18;
+
+  sfxOutputGain = actx.createGain();
+  sfxOutputGain.gain.value = 0.96;
 
   sfxGain.connect(sfxCompressor);
-  sfxCompressor.connect(actx.destination);
+  sfxCompressor.connect(sfxOutputGain);
+  sfxOutputGain.connect(actx.destination);
 }
 
 function initAudio() {
@@ -84,49 +108,87 @@ window.addEventListener('pointerdown', () => {
 }, { passive:true });
 
 // ============ AMBIENT MUSIC ============
-let musicGain = null;
-let musicNodes = [];
-let musicStarted = false;
-
 function initMusic() {
   if (!actx || musicStarted) return;
   musicStarted = true;
 
-  // Master music gain (low volume)
   musicGain = actx.createGain();
   musicGain.gain.value = getMusicTargetGain(0.90);
 
-  // Separate ducking stage so loud SFX can momentarily make room
   musicDuckGain = actx.createGain();
   musicDuckGain.gain.value = 1;
 
-  // Reverb-like delay for spacious feel
-  const delay = actx.createDelay(2);
-  delay.delayTime.value = 0.4;
-  const delayGain = actx.createGain();
-  delayGain.gain.value = 0.3;
-  delay.connect(delayGain);
-  delayGain.connect(delay);
+  const toneFilter = actx.createBiquadFilter();
+  toneFilter.type = 'lowpass';
+  toneFilter.frequency.value = 1800;
+  toneFilter.Q.value = 0.7;
 
-  // Lowpass filter for warmth
-  const filter = actx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = 1200;
-  filter.Q.value = 1;
+  musicCompressor = actx.createDynamicsCompressor();
+  musicCompressor.threshold.value = -26;
+  musicCompressor.knee.value = 20;
+  musicCompressor.ratio.value = 2.6;
+  musicCompressor.attack.value = 0.02;
+  musicCompressor.release.value = 0.25;
+
+  musicMasterGain = actx.createGain();
+  musicMasterGain.gain.value = 0.98;
 
   musicGain.connect(musicDuckGain);
-  musicDuckGain.connect(filter);
-  filter.connect(delay);
-  filter.connect(actx.destination);
-  delayGain.connect(actx.destination);
+  musicDuckGain.connect(toneFilter);
+  toneFilter.connect(musicCompressor);
+  musicCompressor.connect(musicMasterGain);
+  musicMasterGain.connect(actx.destination);
 
-  // Chord progression: Am - F - C - G (i - VI - III - VII in A minor, ethereal)
-  // Frequencies for A minor chord notes
+  // Wide stereo ambience
+  const delayL = actx.createDelay(1.5);
+  delayL.delayTime.value = 0.19;
+  const delayLGain = actx.createGain();
+  delayLGain.gain.value = 0.09;
+  const delayLPan = makeStereoNode(-0.62);
+
+  const delayR = actx.createDelay(1.5);
+  delayR.delayTime.value = 0.27;
+  const delayRGain = actx.createGain();
+  delayRGain.gain.value = 0.08;
+  const delayRPan = makeStereoNode(0.62);
+
+  const shimmerDelayL = actx.createDelay(0.08);
+  shimmerDelayL.delayTime.value = 0.014;
+  const shimmerGainL = actx.createGain();
+  shimmerGainL.gain.value = 0.035;
+  const shimmerPanL = makeStereoNode(-0.35);
+
+  const shimmerDelayR = actx.createDelay(0.08);
+  shimmerDelayR.delayTime.value = 0.021;
+  const shimmerGainR = actx.createGain();
+  shimmerGainR.gain.value = 0.03;
+  const shimmerPanR = makeStereoNode(0.35);
+
+  musicMasterGain.connect(delayL);
+  delayL.connect(delayLGain);
+  delayLGain.connect(delayLPan);
+  delayLPan.connect(actx.destination);
+
+  musicMasterGain.connect(delayR);
+  delayR.connect(delayRGain);
+  delayRGain.connect(delayRPan);
+  delayRPan.connect(actx.destination);
+
+  musicMasterGain.connect(shimmerDelayL);
+  shimmerDelayL.connect(shimmerGainL);
+  shimmerGainL.connect(shimmerPanL);
+  shimmerPanL.connect(actx.destination);
+
+  musicMasterGain.connect(shimmerDelayR);
+  shimmerDelayR.connect(shimmerGainR);
+  shimmerGainR.connect(shimmerPanR);
+  shimmerPanR.connect(actx.destination);
+
   const chords = [
-    [220.00, 261.63, 329.63], // A minor (A C E)
-    [174.61, 220.00, 261.63], // F major (F A C)
-    [261.63, 329.63, 392.00], // C major (C E G)
-    [196.00, 246.94, 293.66], // G major (G B D)
+    [220.00, 261.63, 329.63], // A minor
+    [174.61, 220.00, 261.63], // F major
+    [261.63, 329.63, 392.00], // C major
+    [196.00, 246.94, 293.66], // G major
   ];
 
   let chordIdx = 0;
@@ -135,45 +197,71 @@ function initMusic() {
     if (!actx) return;
     const chord = chords[chordIdx];
     const now = actx.currentTime;
-    const dur = 6; // 6 seconds per chord
+    const dur = 6;
+    const notePans = [-0.32, 0, 0.32];
+
+    // Soft sub layer for more body
+    const sub = actx.createOscillator();
+    const subGain = actx.createGain();
+    const subPan = makeStereoNode(0);
+    sub.type = 'sine';
+    sub.frequency.value = chord[0] * 0.5;
+    subGain.gain.setValueAtTime(0.0001, now);
+    subGain.gain.linearRampToValueAtTime(0.05, now + 1.6);
+    subGain.gain.setValueAtTime(0.05, now + dur - 1.2);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    sub.connect(subGain);
+    subGain.connect(subPan);
+    subPan.connect(musicGain);
+    sub.start(now);
+    sub.stop(now + dur);
 
     chord.forEach((freq, i) => {
-      // Two detuned oscillators per note for richness
-      [0, 7].forEach(detune => {
+      [0, 7].forEach((detune, j) => {
         const osc = actx.createOscillator();
         const g = actx.createGain();
+        const p = makeStereoNode(notePans[i] + (j === 0 ? -0.08 : 0.08));
+        const noteFilter = actx.createBiquadFilter();
+
         osc.type = i === 0 ? 'sine' : 'triangle';
         osc.frequency.value = freq;
         osc.detune.value = detune;
 
-        // Slow envelope: fade in and out
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.15, now + 1.5);
-        g.gain.setValueAtTime(0.15, now + dur - 1.5);
-        g.gain.linearRampToValueAtTime(0, now + dur);
+        noteFilter.type = 'lowpass';
+        noteFilter.frequency.value = i === 0 ? 1600 : 2400;
+        noteFilter.Q.value = 0.6;
 
-        osc.connect(g);
-        g.connect(musicGain);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.linearRampToValueAtTime(0.12, now + 1.4);
+        g.gain.setValueAtTime(0.12, now + dur - 1.3);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+        osc.connect(noteFilter);
+        noteFilter.connect(g);
+        g.connect(p);
+        p.connect(musicGain);
         osc.start(now);
         osc.stop(now + dur);
       });
     });
 
-    // High shimmer note
     const shimmer = actx.createOscillator();
     const sg = actx.createGain();
+    const sp = makeStereoNode(chordIdx % 2 === 0 ? 0.42 : -0.42);
     shimmer.type = 'sine';
     shimmer.frequency.value = chord[0] * 4;
-    sg.gain.setValueAtTime(0, now);
-    sg.gain.linearRampToValueAtTime(0.04, now + 2);
-    sg.gain.linearRampToValueAtTime(0, now + dur);
+    shimmer.detune.value = chordIdx % 2 === 0 ? 4 : -4;
+    sg.gain.setValueAtTime(0.0001, now);
+    sg.gain.linearRampToValueAtTime(0.03, now + 1.8);
+    sg.gain.exponentialRampToValueAtTime(0.001, now + dur);
     shimmer.connect(sg);
-    sg.connect(musicGain);
+    sg.connect(sp);
+    sp.connect(musicGain);
     shimmer.start(now);
     shimmer.stop(now + dur);
 
     chordIdx = (chordIdx + 1) % chords.length;
-    setTimeout(playChord, (dur - 0.5) * 1000); // overlap chords slightly
+    setTimeout(playChord, (dur - 0.5) * 1000);
   }
 
   playChord();
@@ -196,44 +284,57 @@ function vibrate(pattern) {
 }
 
 function playTone(freq, dur, type, vol, detune, opts) {
-  if (!actx || muted || sfxVol<=0) return;
+  if (!actx || muted || sfxVol <= 0) return;
   initSfxBus();
   const now = actx.currentTime;
-  const o = actx.createOscillator();
-  const g = actx.createGain();
-  const f = actx.createBiquadFilter();
   const cfg = opts || {};
   const attack = Math.max(0.004, Math.min(cfg.attack ?? 0.012, dur * 0.45));
   const releaseLead = Math.min(cfg.releaseLead ?? 0.030, dur * 0.55);
-  const peak = clamp((vol || 0.15) * sfxVol * (cfg.trim ?? 1), 0, 0.35);
+  const peak = clamp((vol || 0.15) * sfxVol * (cfg.trim ?? 1), 0, 0.32);
+  const basePan = clamp((cfg.pan !== undefined ? cfg.pan : (Math.random() * 0.18 - 0.09)), -1, 1);
+  const stereoWidth = clamp(cfg.stereoWidth ?? 0.0, 0, 0.7);
 
-  o.type = type || 'sine';
-  o.frequency.value = freq;
-  if (detune) o.detune.value = detune;
+  function emitLayer(freqMul, detuneOffset, panOffset, gainMul, layerType) {
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    const f = actx.createBiquadFilter();
+    const p = makeStereoNode(basePan + panOffset);
 
-  if (cfg.highpass) {
-    f.type = 'highpass';
-    f.frequency.value = cfg.highpass;
-  } else if (cfg.lowpass) {
-    f.type = 'lowpass';
-    f.frequency.value = cfg.lowpass;
-  } else {
-    f.type = 'lowpass';
-    f.frequency.value = 4200;
+    o.type = layerType || type || 'sine';
+    o.frequency.value = freq * freqMul;
+    o.detune.value = (detune || 0) + detuneOffset;
+
+    if (cfg.highpass) {
+      f.type = 'highpass';
+      f.frequency.value = cfg.highpass;
+    } else if (cfg.lowpass) {
+      f.type = 'lowpass';
+      f.frequency.value = cfg.lowpass;
+    } else {
+      f.type = 'lowpass';
+      f.frequency.value = 4200;
+    }
+    f.Q.value = cfg.q ?? 0.7;
+
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(peak * gainMul, now + attack);
+    g.gain.setValueAtTime(peak * gainMul, now + Math.max(attack, dur - releaseLead));
+    g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    o.connect(f);
+    f.connect(g);
+    g.connect(p);
+    p.connect(sfxGain);
+
+    o.start(now);
+    o.stop(now + dur + 0.03);
   }
-  f.Q.value = cfg.q ?? 0.7;
 
-  g.gain.setValueAtTime(0.0001, now);
-  g.gain.linearRampToValueAtTime(peak, now + attack);
-  g.gain.setValueAtTime(peak, now + Math.max(attack, dur - releaseLead));
-  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-  o.connect(f);
-  f.connect(g);
-  g.connect(sfxGain);
-
-  o.start(now);
-  o.stop(now + dur + 0.02);
+  emitLayer(1, 0, 0, 1, type);
+  if (stereoWidth > 0.01) {
+    emitLayer(1.003, 4, stereoWidth, 0.42, cfg.layerType || type || 'sine');
+    emitLayer(0.997, -4, -stereoWidth, 0.35, cfg.layerType || type || 'sine');
+  }
 
   if (cfg.duck && musicDuckGain) {
     duckMusicTo(cfg.duck, cfg.duckMs || Math.max(120, dur * 1000 * 1.1), cfg.duckAttack || 0.012, cfg.duckRelease || 0.18);
@@ -241,31 +342,33 @@ function playTone(freq, dur, type, vol, detune, opts) {
 }
 
 function sndRelease() {
-  playTone(300, 0.11, 'sine', 0.07, 0, { trim:0.92, lowpass:1800 });
-  playTone(450, 0.08, 'triangle', 0.035, 0, { trim:0.90, lowpass:2400 });
+  playTone(300, 0.11, 'sine', 0.065, 0, { trim:0.92, lowpass:1800, stereoWidth:0.14, pan:-0.08 });
+  playTone(450, 0.08, 'triangle', 0.032, 0, { trim:0.90, lowpass:2400, stereoWidth:0.10, pan:0.08 });
 }
 function sndCapture(pts, combo) {
   const base = 380 + combo * 34;
-  playTone(base, 0.16, 'sine', 0.08, 0, { duck:0.95, duckMs:110, lowpass:2500 });
-  playTone(base * 1.5, 0.12, 'triangle', 0.04, 0, { trim:0.94, lowpass:3200 });
-  if (pts >= 3) { setTimeout(()=>playTone(base*2, 0.12, 'sine', 0.045, 0, { trim:0.90, lowpass:2600 }), 50); }
-  if (pts >= 5) { setTimeout(()=>playTone(base*2.5, 0.16, 'triangle', 0.055, 0, { trim:0.90, lowpass:3400, duck:0.93, duckMs:120 }), 105); }
+  playTone(base, 0.16, 'sine', 0.08, 0, { duck:0.95, duckMs:110, lowpass:2500, stereoWidth:0.18 });
+  playTone(base * 1.5, 0.12, 'triangle', 0.04, 0, { trim:0.94, lowpass:3200, stereoWidth:0.14 });
+  if (pts >= 3) { setTimeout(()=>playTone(base*2, 0.12, 'sine', 0.045, 0, { trim:0.90, lowpass:2600, stereoWidth:0.18, pan:0.12 }), 50); }
+  if (pts >= 5) { setTimeout(()=>playTone(base*2.5, 0.16, 'triangle', 0.055, 0, { trim:0.90, lowpass:3400, duck:0.93, duckMs:120, stereoWidth:0.22, pan:-0.12 }), 105); }
 }
 function sndDie() {
-  playTone(200, 0.32, 'sawtooth', 0.07, 0, { duck:0.84, duckMs:260, lowpass:1400 });
-  playTone(120, 0.50, 'sine', 0.05, 0, { trim:0.88, lowpass:900 });
+  playTone(200, 0.32, 'sawtooth', 0.07, 0, { duck:0.84, duckMs:260, lowpass:1400, stereoWidth:0.20, pan:-0.18 });
+  playTone(120, 0.50, 'sine', 0.05, 0, { trim:0.88, lowpass:900, stereoWidth:0.12, pan:0.16 });
 }
 function sndPhase() {
-  playTone(600, 0.12, 'sine', 0.065, 0, { duck:0.90, duckMs:150, lowpass:2600 });
-  setTimeout(()=>playTone(800, 0.12, 'sine', 0.06, 0, { trim:0.94, lowpass:3000 }), 95);
-  setTimeout(()=>playTone(1000, 0.16, 'triangle', 0.05, 0, { trim:0.92, lowpass:3400 }), 190);
+  playTone(600, 0.12, 'sine', 0.065, 0, { duck:0.90, duckMs:150, lowpass:2600, stereoWidth:0.18, pan:-0.14 });
+  setTimeout(()=>playTone(800, 0.12, 'sine', 0.06, 0, { trim:0.94, lowpass:3000, stereoWidth:0.18, pan:0.14 }), 95);
+  setTimeout(()=>playTone(1000, 0.16, 'triangle', 0.05, 0, { trim:0.92, lowpass:3400, stereoWidth:0.24, pan:0 }), 190);
 }
 function sndRecord() {
   [0,100,200,300].forEach((d,i)=>setTimeout(()=>playTone(500+i*150, 0.18, 'sine', 0.075, 0, {
     duck:i===0?0.82:0.88,
     duckMs:180,
     lowpass:3200,
-    trim:0.92
+    trim:0.92,
+    stereoWidth:0.24,
+    pan:(i%2===0?-0.16:0.16)
   }), d));
 }
 

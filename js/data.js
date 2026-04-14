@@ -74,12 +74,40 @@ const SKINS = {
 
 // ============ BACKGROUNDS ============
 const BACKGROUNDS = {
-  space:    {name:'Espaço',unlock:0,type:'stars'},
-  nebula:   {name:'Nebulosa',unlock:30,type:'nebula'},
-  galaxy:   {name:'Galáxia',unlock:80,type:'galaxy'},
-  blackhole:{name:'Buraco Negro',unlock:200,type:'blackhole'},
-  redgiant: {name:'Gigante Vermelha',unlock:500,type:'redgiant'},
-  cosmic:   {name:'Cósmico',unlock:1000,type:'cosmic'},
+  space:            {name:'Espaço',unlock:0,type:'stars'},
+  nebula:           {name:'Nebulosa',unlock:30,type:'nebula'},
+  galaxy:           {name:'Galáxia',unlock:80,type:'galaxy'},
+  blackhole:        {name:'Buraco Negro',unlock:200,type:'blackhole'},
+  redgiant:         {name:'Gigante Vermelha',unlock:500,type:'redgiant'},
+  cosmic:           {name:'Cósmico',unlock:1000,type:'cosmic'},
+  pulsar:           {name:'Pulsar',unlock:1400,type:'pulsar'},
+  saturnrings:      {name:'Anéis de Saturno',unlock:1800,type:'saturnrings'},
+
+  // OBRA-PRIMA - desbloqueios por desafio extremo
+  astralcathedral:  {
+    name:'Catedral Astral',
+    type:'astralcathedral',
+    masterpiece:true,
+    challenge:true,
+    challengeShort:'120 + F6 + 8 OUROS',
+    challengeText:'Alcance 120 pontos, chegue à fase 6 e capture 8 nós dourados no total.'
+  },
+  andromedathrone:  {
+    name:'Trono de Andrômeda',
+    type:'andromedathrone',
+    masterpiece:true,
+    challenge:true,
+    challengeShort:'180 + X12 + 15 OUROS + 7 MISSÕES',
+    challengeText:'Alcance 180 pontos, faça combo x12, capture 15 nós dourados e complete 7 missões diárias.'
+  },
+  cosmicgenesis:    {
+    name:'Gênese Cósmica',
+    type:'cosmicgenesis',
+    masterpiece:true,
+    challenge:true,
+    challengeShort:'250 + X15 + 25 OUROS + 15 MISSÕES + 10 CONQ.',
+    challengeText:'Alcance 250 pontos, faça combo x15, capture 25 nós dourados, complete 15 missões diárias e desbloqueie 10 conquistas.'
+  },
 };
 
 // ============ MISSÕES / EVENTOS ============
@@ -144,6 +172,33 @@ function saveData() {
   } catch(e) {}
 }
 
+
+function isBackgroundChallengeUnlocked(bgKey){
+  switch(bgKey){
+    case 'astralcathedral':
+      return best >= 120 && highestPhase >= 6 && totalGoldCaptured >= 8;
+    case 'andromedathrone':
+      return best >= 180 && bestComboEver >= 12 && totalGoldCaptured >= 15 && missionsCompletedTotal >= 7;
+    case 'cosmicgenesis':
+      return best >= 250 && bestComboEver >= 15 && totalGoldCaptured >= 25 && missionsCompletedTotal >= 15 && achievements.length >= 10;
+    default:
+      return false;
+  }
+}
+
+function isBackgroundUnlockedByRule(bgKey){
+  const bg = BACKGROUNDS[bgKey];
+  if(!bg) return false;
+  if(bg.challenge) return isBackgroundChallengeUnlocked(bgKey);
+  return best >= (bg.unlock || 0);
+}
+
+function getBackgroundUnlockLabel(bgKey){
+  const bg = BACKGROUNDS[bgKey];
+  if(!bg) return '';
+  return bg.challengeShort || ((bg.unlock || 0) + ' pts');
+}
+
 function checkUnlocks() {
   const newUnlocks = [];
   // Check skin unlocks based on best score
@@ -154,7 +209,7 @@ function checkUnlocks() {
     }
   }
   for (const k in BACKGROUNDS) {
-    if (best >= BACKGROUNDS[k].unlock && !unlockedBgs.includes(k)) {
+    if (isBackgroundUnlockedByRule(k) && !unlockedBgs.includes(k)) {
       unlockedBgs.push(k);
       newUnlocks.push({type:'bg',key:k,data:BACKGROUNDS[k]});
     }

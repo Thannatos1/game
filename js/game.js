@@ -218,6 +218,7 @@ function initNodes(){
 
 // ============ RESET ============
 function reset(){
+  if(typeof resetBackgroundAnchors === 'function') resetBackgroundAnchors();
   score=0;newRec=false;deathT=0;shakeT=0;flashA=0;
   phaseMsg='';phaseMsgT=0;combo=0;maxCombo=0;comboTimer=0;lastCaptureTime=0;
   particles=[];ringParticles=[];scorePopups=[];
@@ -522,6 +523,11 @@ function isMuteBtnTap(x, y) {
 
 // Menu button areas
 let menuBtnAreas = [];
+let menuTouchTracking = false;
+let menuTouchDidScroll = false;
+let menuTouchStartX = 0;
+let menuTouchStartY = 0;
+let menuTouchLastY = 0;
 
 function getComboWindow(){
   const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
@@ -644,15 +650,41 @@ function handleInput(){
 C.addEventListener('touchstart',e=>{
   const t=e.touches[0];
   const rect=C.getBoundingClientRect();
-  handleTap(t.clientX-rect.left, t.clientY-rect.top);
+  const x=t.clientX-rect.left;
+  const y=t.clientY-rect.top;
+
+  if(state===ST.MENU && typeof canStartMenuScroll==='function' && canStartMenuScroll(x,y)){
+    menuTouchTracking = true;
+    menuTouchDidScroll = false;
+    menuTouchStartX = x;
+    menuTouchStartY = y;
+    menuTouchLastY = y;
+    return;
+  }
+
+  handleTap(x, y);
 });
 C.addEventListener('touchmove',e=>{
+  const t=e.touches[0];
+  const rect=C.getBoundingClientRect();
+  const x = t.clientX-rect.left;
+  const y = t.clientY-rect.top;
+
+  if(menuTouchTracking && state===ST.MENU && typeof applyMenuScrollGesture==='function'){
+    const dx = x - menuTouchStartX;
+    const dy = y - menuTouchStartY;
+    if(Math.abs(dy) > 6 || Math.abs(dx) > 6){
+      menuTouchDidScroll = true;
+    }
+    if(menuTouchDidScroll){
+      applyMenuScrollGesture(y - menuTouchLastY);
+      menuTouchLastY = y;
+      return;
+    }
+  }
+
   // Handle slider dragging during settings
   if(state===ST.MENU && menuScreen==='settings'){
-    const t=e.touches[0];
-    const rect=C.getBoundingClientRect();
-    const x = t.clientX-rect.left;
-    const y = t.clientY-rect.top;
     for(const b of menuBtnAreas){
       if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h && b.action.length>0){
         b.action(x,y);
@@ -661,10 +693,33 @@ C.addEventListener('touchmove',e=>{
     }
   }
 });
+C.addEventListener('touchend',e=>{
+  if(!menuTouchTracking) return;
+  const t=(e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+  const rect=C.getBoundingClientRect();
+  const x=t ? (t.clientX-rect.left) : menuTouchStartX;
+  const y=t ? (t.clientY-rect.top) : menuTouchStartY;
+  const shouldTap = !menuTouchDidScroll;
+  menuTouchTracking = false;
+  menuTouchDidScroll = false;
+  if(shouldTap){
+    handleTap(x, y);
+  }
+});
 C.addEventListener('mousedown',e=>{
   const rect=C.getBoundingClientRect();
   handleTap(e.clientX-rect.left, e.clientY-rect.top);
 });
+C.addEventListener('wheel',e=>{
+  if(!(state===ST.MENU && typeof canStartMenuScroll==='function')) return;
+  const rect=C.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  const y=e.clientY-rect.top;
+  if(canStartMenuScroll(x,y) && typeof wheelMenuScroll==='function'){
+    e.preventDefault();
+    wheelMenuScroll(e.deltaY);
+  }
+}, { passive:false });
 document.addEventListener('keydown',e=>{
   if((menuScreen==='nickname'||menuScreen==='changeNickname') && state===ST.MENU){
     e.preventDefault();

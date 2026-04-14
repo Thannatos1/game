@@ -152,7 +152,10 @@ try {
     bestComboEver = d.bestComboEver || 0;
     highestPhase = d.highestPhase || 1;
     achievements = d.achievements || [];
-    musicVol = d.musicVol !== undefined ? d.musicVol : 0.5;
+    const legacyMusicVol = d.musicVol !== undefined ? d.musicVol : 0.5;
+    menuMusicVol = d.menuMusicVol !== undefined ? d.menuMusicVol : legacyMusicVol;
+    gameMusicVol = d.gameMusicVol !== undefined ? d.gameMusicVol : legacyMusicVol;
+    musicVol = legacyMusicVol;
     sfxVol = d.sfxVol !== undefined ? d.sfxVol : 0.8;
     vibrationOn = d.vibrationOn !== undefined ? d.vibrationOn : true;
     dailyMissionState = d.dailyMissionState || null;
@@ -166,7 +169,7 @@ function saveData() {
       best, totalGames, muted, selectedSkin, selectedBg,
       unlockedSkins, unlockedBgs, totalGoldCaptured, zenUnlocked,
       totalScoreEver, totalNodesEver, bestComboEver, highestPhase,
-      achievements, musicVol, sfxVol, vibrationOn,
+      achievements, musicVol: menuMusicVol, menuMusicVol, gameMusicVol, sfxVol, vibrationOn,
       dailyMissionState, missionsCompletedTotal
     }));
   } catch(e) {}

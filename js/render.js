@@ -1839,14 +1839,14 @@ function drawPauseScreen(){
 
   drawActionBtn(btnX,H*0.58,btnW,btnH,'CONTINUAR','#00f5d4',true,()=>{
     state=ST.PLAY;
-    setMusicVolume(0.95);
+    setMusicVolume(1.00);
   });
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
     state=ST.MENU;
     menuScreen='main';
-    setMusicVolume(0.80);
+    setMusicVolume(0.90);
   });
 }
 
@@ -3627,9 +3627,17 @@ function drawSettingsMenu(){
   X.fillText('ÁUDIO',contentX,curY);
   curY+=16;
 
-  drawSlider(contentX,curY,contentW,'Música',musicVol,(v)=>{
-    musicVol=v;
-    setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75);
+  drawSlider(contentX,curY,contentW,'Música do menu',menuMusicVol,(v)=>{
+    menuMusicVol=v;
+    musicVol=menuMusicVol;
+    if(state===ST.MENU || state===ST.DEAD) setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.90);
+    saveData();
+  });
+  curY+=50;
+
+  drawSlider(contentX,curY,contentW,'Música do jogo',gameMusicVol,(v)=>{
+    gameMusicVol=v;
+    if(state===ST.PLAY || state===ST.PAUSE) setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 1.00);
     saveData();
   });
   curY+=50;
@@ -3779,6 +3787,15 @@ function drawSettingsBtn(x,y,w,label,icon,color,action){
 
 function drawSlider(x,y,w,label,value,onChange){
   const h=44;
+  const step=0.05;
+  const btnSize=24;
+  const btnGap=10;
+  const trackX=x+btnSize+btnGap;
+  const trackW=w-(btnSize+btnGap)*2;
+  const trackY=y+26;
+  const trackH=6;
+  const knobY=trackY+trackH/2;
+
   // Label
   X.fillStyle='#fff';
   X.font='bold 12px -apple-system, system-ui, sans-serif';
@@ -3787,52 +3804,74 @@ function drawSlider(x,y,w,label,value,onChange){
   X.fillText(label,x,y+8);
 
   // Value %
-  X.fillStyle='rgba(255,255,255,0.5)';
+  X.fillStyle='rgba(255,255,255,0.55)';
   X.font='10px -apple-system, system-ui, sans-serif';
   X.textAlign='right';
   X.fillText(Math.round(value*100)+'%',x+w,y+8);
 
+  // Minus / plus buttons
+  const btnY=y+14;
+  drawMiniStepBtn(x,btnY,btnSize,btnSize,'−',()=>onChange(clamp(value-step,0,1)));
+  drawMiniStepBtn(x+w-btnSize,btnY,btnSize,btnSize,'+',()=>onChange(clamp(value+step,0,1)));
+
   // Track
-  const trackY=y+26;
-  const trackH=6;
   X.fillStyle='rgba(0,0,0,0.5)';
-  roundRect(x,trackY,w,trackH,3);
+  roundRect(trackX,trackY,trackW,trackH,3);
   X.fill();
 
   // Fill
-  const fillW=w*value;
+  const fillW=trackW*value;
   if(fillW>0){
-    const g=X.createLinearGradient(x,trackY,x+fillW,trackY);
+    const g=X.createLinearGradient(trackX,trackY,trackX+fillW,trackY);
     g.addColorStop(0,'#00f5d4');
     g.addColorStop(1,'#70a1ff');
     X.fillStyle=g;
-    roundRect(x,trackY,fillW,trackH,3);
+    roundRect(trackX,trackY,fillW,trackH,3);
     X.fill();
   }
 
   // Knob
-  const knobX=x+fillW;
+  const knobX=trackX+fillW;
   X.shadowColor='#00f5d4';
   X.shadowBlur=8;
   X.fillStyle='#fff';
   X.beginPath();
-  X.arc(knobX,trackY+trackH/2,9,0,Math.PI*2);
+  X.arc(knobX,knobY,9,0,Math.PI*2);
   X.fill();
   X.shadowBlur=0;
   X.strokeStyle='#00f5d4';
   X.lineWidth=2;
   X.beginPath();
-  X.arc(knobX,trackY+trackH/2,9,0,Math.PI*2);
+  X.arc(knobX,knobY,9,0,Math.PI*2);
   X.stroke();
 
-  // Touch zone (bigger than visual)
+  // Touch zone for dragging
   menuBtnAreas.push({
-    x:x-5, y:trackY-15, w:w+10, h:36,
+    x:trackX-6, y:trackY-15, w:trackW+12, h:36,
     action:(tapX)=>{
-      const newV = clamp((tapX-x)/w, 0, 1);
+      const newV = clamp((tapX-trackX)/trackW, 0, 1);
       onChange(newV);
     }
   });
+}
+
+function drawMiniStepBtn(x,y,w,h,label,action){
+  X.globalAlpha=0.85;
+  X.fillStyle='rgba(0,0,0,0.55)';
+  roundRect(x,y,w,h,7);
+  X.fill();
+  X.strokeStyle='rgba(255,255,255,0.22)';
+  X.lineWidth=1;
+  roundRect(x,y,w,h,7);
+  X.stroke();
+  X.globalAlpha=1;
+  X.fillStyle='#fff';
+  X.font='bold 16px -apple-system, system-ui, sans-serif';
+  X.textAlign='center';
+  X.textBaseline='middle';
+  X.fillText(label,x+w/2,y+h/2+0.5);
+
+  menuBtnAreas.push({x,y,w,h,action});
 }
 
 function drawToggle(x,y,w,label,isOn,action){
@@ -4277,7 +4316,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.95);
+        setMusicVolume(0.90);
       });
     } else {
       // Smaller menu btn alongside
@@ -4286,7 +4325,7 @@ function drawDeadUI(){
         zenMode=false;
         state=ST.MENU;
         menuScreen='main';
-        setMusicVolume(0.95);
+        setMusicVolume(0.90);
       });
     }
   }

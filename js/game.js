@@ -441,7 +441,7 @@ function die(){
   pendingAchievements = checkAchievements();
   pendingUnlocks = missionPending.concat(newUnlocks, pendingAchievements);
   saveData();
-  setMusicVolume(0.05);
+  setMusicVolume(0.45);
 }
 
 function choosePowerupType(){
@@ -560,7 +560,7 @@ function startRun(useZen, source='unknown') {
   pendingUnlocks = [];
   reset();
   state = ST.PLAY;
-  setMusicVolume(zenMode ? 0.10 : 0.12);
+  setMusicVolume(zenMode ? 0.92 : 1.00);
 
   if (typeof trackEvent === 'function') {
     trackEvent('game_start', {
@@ -596,7 +596,7 @@ function handleTap(x, y){
   // Check pause button tap during play
   if(state===ST.PLAY && isPauseBtnTap(x, y)){
     state=ST.PAUSE;
-    setMusicVolume(0.05);
+    setMusicVolume(0.45);
     return;
   }
 
@@ -741,7 +741,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden&&state===ST.PLAY){
     state=ST.PAUSE;
-    setMusicVolume(0.05);
+    setMusicVolume(0.45);
   }
 });
 

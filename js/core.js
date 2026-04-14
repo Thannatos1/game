@@ -19,9 +19,21 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 const MUSIC_BASE_GAIN = 0.90;
 let actx = null;
-let musicSceneLevel = 0.75;
+let musicSceneLevel = 0.90;
+
+function getCurrentMusicUserVolume() {
+  const isGameplayContext = state === ST.PLAY || state === ST.PAUSE;
+  return clamp(isGameplayContext ? gameMusicVol : menuMusicVol, 0, 1);
+}
+
 function getMusicTargetGain(sceneLevel = musicSceneLevel) {
-  return muted ? 0 : MUSIC_BASE_GAIN * clamp(sceneLevel, 0, 1) * clamp(musicVol, 0, 1);
+  return muted ? 0 : MUSIC_BASE_GAIN * clamp(sceneLevel, 0, 1) * getCurrentMusicUserVolume();
+}
+
+function refreshMusicGain(rampSeconds = 0.25) {
+  if (musicGain && actx) {
+    musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + rampSeconds);
+  }
 }
 function initAudio() {
   if (!actx) {
@@ -48,7 +60,7 @@ function initMusic() {
 
   // Master music gain (low volume)
   musicGain = actx.createGain();
-  musicGain.gain.value = getMusicTargetGain(0.75);
+  musicGain.gain.value = getMusicTargetGain(0.90);
 
   // Reverb-like delay for spacious feel
   const delay = actx.createDelay(2);
@@ -130,17 +142,13 @@ function initMusic() {
 
 function setMusicVolume(v) {
   musicSceneLevel = clamp(v, 0, 1);
-  if (musicGain && actx) {
-    musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + 0.25);
-  }
+  refreshMusicGain(0.25);
 }
 
 function toggleMute() {
   muted = !muted;
   saveData();
-  if (musicGain && actx) {
-    musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + 0.18);
-  }
+  refreshMusicGain(0.18);
 }
 
 function vibrate(pattern) {
@@ -206,8 +214,10 @@ let lastCaptureTime=0;
 let tutorialStep=0;
 let tutorialT=0;
 let muted=false;
-let musicVol=0.5;  // 0-1
-let sfxVol=0.8;    // 0-1
+let musicVol=0.5;      // legado
+let menuMusicVol=0.45; // 0-1
+let gameMusicVol=0.80; // 0-1
+let sfxVol=0.8;        // 0-1
 let vibrationOn=true;
 let goldFlashT=0;
 let goldZoomT=0;

@@ -18,8 +18,12 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 // ============ AUDIO ============
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 const MUSIC_BASE_GAIN = 0.90;
+const SFX_BASE_GAIN = 0.78;
 let actx = null;
 let musicSceneLevel = 0.90;
+let musicDuckGain = null;
+let sfxGain = null;
+let sfxCompressor = null;
 
 function getCurrentMusicUserVolume() {
   const isGameplayContext = state === ST.PLAY || state === ST.PAUSE;
@@ -35,10 +39,40 @@ function refreshMusicGain(rampSeconds = 0.25) {
     musicGain.gain.linearRampToValueAtTime(getMusicTargetGain(), actx.currentTime + rampSeconds);
   }
 }
+
+function duckMusicTo(mult = 0.90, holdMs = 140, rampDown = 0.012, rampUp = 0.18) {
+  if (!musicDuckGain || !actx) return;
+  const now = actx.currentTime;
+  const holdSec = Math.max(0.04, holdMs / 1000);
+  const safeMult = clamp(mult, 0.55, 1);
+  musicDuckGain.gain.cancelScheduledValues(now);
+  musicDuckGain.gain.setValueAtTime(musicDuckGain.gain.value, now);
+  musicDuckGain.gain.linearRampToValueAtTime(safeMult, now + rampDown);
+  musicDuckGain.gain.setValueAtTime(safeMult, now + rampDown + holdSec);
+  musicDuckGain.gain.linearRampToValueAtTime(1, now + rampDown + holdSec + rampUp);
+}
+
+function initSfxBus() {
+  if (!actx || sfxGain) return;
+  sfxGain = actx.createGain();
+  sfxGain.gain.value = SFX_BASE_GAIN;
+
+  sfxCompressor = actx.createDynamicsCompressor();
+  sfxCompressor.threshold.value = -22;
+  sfxCompressor.knee.value = 18;
+  sfxCompressor.ratio.value = 3.5;
+  sfxCompressor.attack.value = 0.003;
+  sfxCompressor.release.value = 0.20;
+
+  sfxGain.connect(sfxCompressor);
+  sfxCompressor.connect(actx.destination);
+}
+
 function initAudio() {
   if (!actx) {
     actx = new AudioCtx();
     initMusic();
+    initSfxBus();
   }
   if (actx && actx.state === 'suspended') {
     actx.resume().catch(()=>{});
@@ -62,6 +96,10 @@ function initMusic() {
   musicGain = actx.createGain();
   musicGain.gain.value = getMusicTargetGain(0.90);
 
+  // Separate ducking stage so loud SFX can momentarily make room
+  musicDuckGain = actx.createGain();
+  musicDuckGain.gain.value = 1;
+
   // Reverb-like delay for spacious feel
   const delay = actx.createDelay(2);
   delay.delayTime.value = 0.4;
@@ -76,7 +114,8 @@ function initMusic() {
   filter.frequency.value = 1200;
   filter.Q.value = 1;
 
-  musicGain.connect(filter);
+  musicGain.connect(musicDuckGain);
+  musicDuckGain.connect(filter);
   filter.connect(delay);
   filter.connect(actx.destination);
   delayGain.connect(actx.destination);
@@ -156,38 +195,78 @@ function vibrate(pattern) {
   navigator.vibrate(pattern);
 }
 
-function playTone(freq, dur, type, vol, detune) {
+function playTone(freq, dur, type, vol, detune, opts) {
   if (!actx || muted || sfxVol<=0) return;
+  initSfxBus();
+  const now = actx.currentTime;
   const o = actx.createOscillator();
   const g = actx.createGain();
+  const f = actx.createBiquadFilter();
+  const cfg = opts || {};
+  const attack = Math.max(0.004, Math.min(cfg.attack ?? 0.012, dur * 0.45));
+  const releaseLead = Math.min(cfg.releaseLead ?? 0.030, dur * 0.55);
+  const peak = clamp((vol || 0.15) * sfxVol * (cfg.trim ?? 1), 0, 0.35);
+
   o.type = type || 'sine';
   o.frequency.value = freq;
   if (detune) o.detune.value = detune;
-  g.gain.setValueAtTime((vol||0.15)*sfxVol, actx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
-  o.connect(g); g.connect(actx.destination);
-  o.start(); o.stop(actx.currentTime + dur);
+
+  if (cfg.highpass) {
+    f.type = 'highpass';
+    f.frequency.value = cfg.highpass;
+  } else if (cfg.lowpass) {
+    f.type = 'lowpass';
+    f.frequency.value = cfg.lowpass;
+  } else {
+    f.type = 'lowpass';
+    f.frequency.value = 4200;
+  }
+  f.Q.value = cfg.q ?? 0.7;
+
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.linearRampToValueAtTime(peak, now + attack);
+  g.gain.setValueAtTime(peak, now + Math.max(attack, dur - releaseLead));
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+  o.connect(f);
+  f.connect(g);
+  g.connect(sfxGain);
+
+  o.start(now);
+  o.stop(now + dur + 0.02);
+
+  if (cfg.duck && musicDuckGain) {
+    duckMusicTo(cfg.duck, cfg.duckMs || Math.max(120, dur * 1000 * 1.1), cfg.duckAttack || 0.012, cfg.duckRelease || 0.18);
+  }
 }
 
-function sndRelease() { playTone(300, 0.15, 'sine', 0.1); playTone(450, 0.1, 'triangle', 0.05); }
+function sndRelease() {
+  playTone(300, 0.11, 'sine', 0.07, 0, { trim:0.92, lowpass:1800 });
+  playTone(450, 0.08, 'triangle', 0.035, 0, { trim:0.90, lowpass:2400 });
+}
 function sndCapture(pts, combo) {
-  const base = 400 + combo * 40;
-  playTone(base, 0.2, 'sine', 0.12);
-  playTone(base * 1.5, 0.15, 'triangle', 0.06);
-  if (pts >= 3) { setTimeout(()=>playTone(base*2, 0.2, 'sine', 0.08), 60); }
-  if (pts >= 5) { setTimeout(()=>playTone(base*2.5, 0.25, 'triangle', 0.1), 120); }
+  const base = 380 + combo * 34;
+  playTone(base, 0.16, 'sine', 0.08, 0, { duck:0.95, duckMs:110, lowpass:2500 });
+  playTone(base * 1.5, 0.12, 'triangle', 0.04, 0, { trim:0.94, lowpass:3200 });
+  if (pts >= 3) { setTimeout(()=>playTone(base*2, 0.12, 'sine', 0.045, 0, { trim:0.90, lowpass:2600 }), 50); }
+  if (pts >= 5) { setTimeout(()=>playTone(base*2.5, 0.16, 'triangle', 0.055, 0, { trim:0.90, lowpass:3400, duck:0.93, duckMs:120 }), 105); }
 }
 function sndDie() {
-  playTone(200, 0.4, 'sawtooth', 0.1);
-  playTone(120, 0.6, 'sine', 0.08);
+  playTone(200, 0.32, 'sawtooth', 0.07, 0, { duck:0.84, duckMs:260, lowpass:1400 });
+  playTone(120, 0.50, 'sine', 0.05, 0, { trim:0.88, lowpass:900 });
 }
 function sndPhase() {
-  playTone(600, 0.15, 'sine', 0.1);
-  setTimeout(()=>playTone(800, 0.15, 'sine', 0.1), 100);
-  setTimeout(()=>playTone(1000, 0.2, 'triangle', 0.08), 200);
+  playTone(600, 0.12, 'sine', 0.065, 0, { duck:0.90, duckMs:150, lowpass:2600 });
+  setTimeout(()=>playTone(800, 0.12, 'sine', 0.06, 0, { trim:0.94, lowpass:3000 }), 95);
+  setTimeout(()=>playTone(1000, 0.16, 'triangle', 0.05, 0, { trim:0.92, lowpass:3400 }), 190);
 }
 function sndRecord() {
-  [0,100,200,300].forEach((d,i)=>setTimeout(()=>playTone(500+i*150,0.2,'sine',0.1),d));
+  [0,100,200,300].forEach((d,i)=>setTimeout(()=>playTone(500+i*150, 0.18, 'sine', 0.075, 0, {
+    duck:i===0?0.82:0.88,
+    duckMs:180,
+    lowpass:3200,
+    trim:0.92
+  }), d));
 }
 
 // ============ UTILS ============

@@ -421,7 +421,7 @@ function die(){
   if(score>best){
     best=score;newRec=true;sndRecord();
     // Submit to global ranking if logged in
-    if(currentUser && playerName && score>=5 && score>lastSubmittedScore){
+    if (!zenMode && currentUser && score >= 5 && score > lastSubmittedScore) {
       lastSubmittedScore = score;
       submitScore(score, selectedSkin);
     }
@@ -549,14 +549,28 @@ function shouldShowAssistGuides(){
   return tutorialStep>0 || totalGames<1;
 }
 
-function startRun(useZen, source='unknown'){
+function startRun(useZen, source='unknown') {
   zenMode = !!useZen;
   pendingUnlocks = [];
   reset();
   state = ST.PLAY;
-  setMusicVolume(zenMode?0.10:0.12);
-  if(typeof trackEvent==='function'){
-    trackEvent('game_start', { mode: zenMode ? 'zen' : 'normal', source, best, unlocked_skins: unlockedSkins.length, unlocked_bgs: unlockedBgs.length });
+  setMusicVolume(zenMode ? 0.10 : 0.12);
+
+  if (typeof trackEvent === 'function') {
+    trackEvent('game_start', {
+      mode: zenMode ? 'zen' : 'normal',
+      source,
+      best,
+      unlocked_skins: unlockedSkins.length,
+      unlocked_bgs: unlockedBgs.length
+    });
+  }
+
+  if (typeof clearActiveRunSession === 'function') {
+    clearActiveRunSession();
+  }
+  if (!zenMode && typeof startServerRunSession === 'function') {
+    startServerRunSession('normal', source);
   }
 }
 

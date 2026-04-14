@@ -36,6 +36,9 @@ let rankingsError = '';
 let userPosition = -1;
 let lastSubmittedScore = 0;
 
+const RUN_SESSION_KEY = 'orbita_run_session';
+let activeRunSession = null;
+
 const PROFILE_NAME_CACHE_KEY = 'orbita_profile_name_cache';
 
 function getCachedProfileName() {
@@ -85,7 +88,32 @@ function persistPendingScoreSubmission() {
 }
 
 function hasPendingScoreSubmission() {
-  return !!(pendingScoreSubmission && Number.isFinite(Number(pendingScoreSubmission.score)));
+  return !!(
+    pendingScoreSubmission &&
+    Number.isFinite(Number(pendingScoreSubmission.score)) &&
+    pendingScoreSubmission.run_id
+  );
+}
+
+function loadRunSession() {
+  try {
+    const raw = sessionStorage.getItem(RUN_SESSION_KEY);
+    activeRunSession = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    activeRunSession = null;
+  }
+}
+
+function persistRunSession() {
+  try {
+    if (activeRunSession) sessionStorage.setItem(RUN_SESSION_KEY, JSON.stringify(activeRunSession));
+    else sessionStorage.removeItem(RUN_SESSION_KEY);
+  } catch (e) {}
+}
+
+function clearActiveRunSession() {
+  activeRunSession = null;
+  persistRunSession();
 }
 
 function isNetworkError(error) {
@@ -94,28 +122,51 @@ function isNetworkError(error) {
 }
 
 function queuePendingScoreSubmission(score, skin) {
-  const next = { score: Number(score) || 0, skin: skin || null, queued_at: new Date().toISOString() };
+  if (!activeRunSession || !activeRunSession.run_id) return false;
+
+  const next = {
+    score: Number(score) || 0,
+    skin: skin || null,
+    run_id: activeRunSession.run_id,
+    queued_at: new Date().toISOString()
+  };
+
   if (!pendingScoreSubmission || next.score >= Number(pendingScoreSubmission.score || 0)) {
     pendingScoreSubmission = next;
     persistPendingScoreSubmission();
   }
+  return true;
 }
 
 async function flushPendingScoreSubmission() {
-  if (!hasPendingScoreSubmission() || !networkOnline || !sb || !currentUser || !playerName) return false;
+  if (!hasPendingScoreSubmission() || !networkOnline || !sb || !currentUser) return false;
+
   const next = pendingScoreSubmission;
   try {
-    const { data, error } = await sb.rpc('submit_score', {
+    const { data, error } = await sb.rpc('submit_score_secure', {
+      p_run_id: next.run_id,
       p_score: Number(next.score) || 0,
-      p_skin: next.skin || null
+      p_skin: next.skin || null,
+      p_client_meta: {
+        source: 'pending_flush',
+        queued_at: next.queued_at || null
+      }
     });
     if (error) throw error;
+
     if (data?.stored !== undefined) {
       lastSubmittedScore = Math.max(lastSubmittedScore, Number(data.stored) || 0);
     }
-    trackEvent('pending_score_flushed', { submitted: Number(next.score) || 0, stored: Number(data?.stored || next.score || 0) }, { urgent: true });
+
+    trackEvent('pending_score_flushed', {
+      submitted: Number(next.score) || 0,
+      stored: Number(data?.stored || next.score || 0),
+      run_id: next.run_id
+    }, { urgent: true });
+
     pendingScoreSubmission = null;
     persistPendingScoreSubmission();
+    clearActiveRunSession();
     return true;
   } catch (e) {
     console.warn('[Orbita] pending score flush failed', e);
@@ -225,6 +276,7 @@ async function flushAnalyticsQueue(force = false) {
 
 loadAnalyticsQueue();
 loadPendingScoreSubmission();
+loadRunSession();
 
 // Initialize auth on load
 async function initAuth() {
@@ -333,6 +385,7 @@ async function signOut() {
     playerName = '';
     setCachedProfileName('');
     needsNickname = false;
+    clearActiveRunSession();
     menuScreen = 'main';
   } catch(e) {
     console.error('Sign out failed', e);
@@ -341,6 +394,47 @@ async function signOut() {
 
 function normalizeNickname(name) {
   return String(name || '').trim().toUpperCase();
+}
+
+async function startServerRunSession(mode = 'normal', source = 'unknown') {
+  clearActiveRunSession();
+
+  if (!sb || !currentUser || !networkOnline) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await sb.rpc('start_run_session', {
+      p_mode: mode,
+      p_client_meta: {
+        source,
+        best: Number(best) || 0,
+        selected_skin: selectedSkin || null,
+        selected_bg: selectedBg || null
+      }
+    });
+    if (error) throw error;
+
+    activeRunSession = {
+      run_id: data?.run_id || null,
+      mode: data?.mode || mode,
+      started_at: data?.started_at || new Date().toISOString(),
+      source
+    };
+    persistRunSession();
+
+    trackEvent('run_session_started', {
+      mode: activeRunSession.mode,
+      source,
+      has_nickname: !!playerName
+    });
+
+    return activeRunSession;
+  } catch (e) {
+    console.error('start_run_session failed', e);
+    clearActiveRunSession();
+    return null;
+  }
 }
 
 function getRpcNicknameError(e) {
@@ -355,6 +449,14 @@ function getRpcScoreError(e) {
   const msg = String(e?.message || e?.details || '').toLowerCase();
   if (msg.includes('profile without nickname')) return 'Defina um apelido antes de enviar score';
   if (msg.includes('not authenticated')) return 'Login necessário para ranking';
+  if (msg.includes('run session required')) return 'Partida inválida. Abra uma nova run';
+  if (msg.includes('run not found')) return 'Run não encontrada';
+  if (msg.includes('run already finished')) return 'Essa run já foi encerrada';
+  if (msg.includes('run expired')) return 'Essa run expirou. Jogue outra';
+  if (msg.includes('run too short')) return 'Run curta demais para ranking';
+  if (msg.includes('score exceeds server limit')) return 'Score rejeitado pelo servidor';
+  if (msg.includes('score exceeds absolute cap')) return 'Score acima do limite absoluto';
+  if (msg.includes('zen mode is not ranked')) return 'Modo Zen não entra no ranking';
   return 'Erro ao enviar score';
 }
 
@@ -395,35 +497,85 @@ async function saveNickname(name) {
 }
 
 async function submitScore(score, skin) {
-  if (!sb || !currentUser || !playerName) return false;
-  if (!networkOnline) {
-    queuePendingScoreSubmission(score, skin);
-    lastSubmittedScore = Math.max(lastSubmittedScore, Number(score) || 0);
-    trackEvent('score_queued_offline', { submitted: Number(score) || 0, skin: skin || null });
-    return true;
+  if (!sb || !currentUser) return false;
+  if (!activeRunSession || !activeRunSession.run_id) {
+    console.warn('[Orbita] secure submit blocked: no active run session');
+    return false;
   }
+
+  if (!networkOnline) {
+    const queued = queuePendingScoreSubmission(score, skin);
+    if (queued) {
+      lastSubmittedScore = Math.max(lastSubmittedScore, Number(score) || 0);
+      trackEvent('score_queued_offline', {
+        submitted: Number(score) || 0,
+        skin: skin || null,
+        run_id: activeRunSession.run_id
+      });
+      return true;
+    }
+    return false;
+  }
+
   try {
-    const { data, error } = await sb.rpc('submit_score', {
-      p_score: score,
-      p_skin: skin
+    const { data, error } = await sb.rpc('submit_score_secure', {
+      p_run_id: activeRunSession.run_id,
+      p_score: Number(score) || 0,
+      p_skin: skin || null,
+      p_client_meta: {
+        source: 'game_over',
+        best_local: Number(best) || 0,
+        selected_skin: skin || null,
+        selected_bg: selectedBg || null
+      }
     });
     if (error) throw error;
+
     if (data?.stored !== undefined) {
       lastSubmittedScore = Math.max(lastSubmittedScore, Number(data.stored) || 0);
     }
-    trackEvent('score_submitted', { submitted: score, stored: Number(data?.stored || score), new_record: !!data?.new_record, skin: skin || null });
+
+    trackEvent('score_submitted', {
+      submitted: Number(score) || 0,
+      stored: Number(data?.stored || score || 0),
+      new_record: !!data?.new_record,
+      skin: skin || null,
+      run_id: activeRunSession.run_id,
+      duration_seconds: Number(data?.duration_seconds || 0)
+    });
+
+    clearActiveRunSession();
     return true;
-  } catch(e) {
-    console.error('submit_score failed', e);
+  } catch (e) {
+    console.error('submit_score_secure failed', e);
+
     if (isNetworkError(e)) {
-      queuePendingScoreSubmission(score, skin);
-      lastSubmittedScore = Math.max(lastSubmittedScore, Number(score) || 0);
-      trackEvent('score_queued_retry', { submitted: Number(score) || 0, skin: skin || null });
-      return true;
+      const queued = queuePendingScoreSubmission(score, skin);
+      if (queued) {
+        lastSubmittedScore = Math.max(lastSubmittedScore, Number(score) || 0);
+        trackEvent('score_queued_retry', {
+          submitted: Number(score) || 0,
+          skin: skin || null,
+          run_id: activeRunSession.run_id
+        });
+        return true;
+      }
     }
+
     const friendly = getRpcScoreError(e);
     if (friendly === 'Defina um apelido antes de enviar score') {
       needsNickname = true;
+    }
+    if (
+      friendly === 'Partida inválida. Abra uma nova run' ||
+      friendly === 'Run não encontrada' ||
+      friendly === 'Essa run já foi encerrada' ||
+      friendly === 'Essa run expirou. Jogue outra' ||
+      friendly === 'Run curta demais para ranking' ||
+      friendly === 'Score rejeitado pelo servidor' ||
+      friendly === 'Modo Zen não entra no ranking'
+    ) {
+      clearActiveRunSession();
     }
     return false;
   }
@@ -479,6 +631,8 @@ async function deleteAccount() {
     try { localStorage.removeItem('orbita_save'); } catch (e) {}
     setCachedProfileName('');
     try { localStorage.removeItem(ANALYTICS_QUEUE_KEY); } catch (e) {}
+    clearActiveRunSession();
+    try { sessionStorage.removeItem(RUN_SESSION_KEY); } catch (e) {}
 
     currentUser = null;
     playerName = '';
@@ -557,6 +711,7 @@ if (sb) {
       playerName = '';
       setCachedProfileName('');
       needsNickname = false;
+      clearActiveRunSession();
       menuScreen = 'login';
       trackEvent('auth_signed_out', {});
     }
@@ -595,4 +750,5 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('beforeunload', () => {
   persistAnalyticsQueue();
   persistPendingScoreSubmission();
+  persistRunSession();
 });

@@ -43,6 +43,40 @@
     }
   }
 
+
+  function isMobilePortraitGameplay(){
+    try {
+      return H > W && Math.min(W, H) <= 900;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function getSpawnCameraAnchor(){
+    try {
+      if (typeof getGameplayCameraAnchor === 'function') {
+        return getGameplayCameraAnchor(false) || { x:0.5, y:0.5 };
+      }
+    } catch (e) {}
+    return { x:0.5, y:0.5 };
+  }
+
+  function isSpawnInsideGameplayView(x, y, fromNode){
+    if (!isMobilePortraitGameplay() || !fromNode) return true;
+
+    const anchor = getSpawnCameraAnchor();
+    const padX = Math.max(34, W * 0.08);
+    const padTop = Math.max(84, H * 0.10);
+    const padBottom = Math.max(48, H * 0.06);
+
+    const left = fromNode.x - W * anchor.x + padX;
+    const right = fromNode.x + W * (1 - anchor.x) - padX;
+    const top = fromNode.y - H * anchor.y + padTop;
+    const bottom = fromNode.y + H * (1 - anchor.y) - padBottom;
+
+    return x >= left && x <= right && y >= top && y <= bottom;
+  }
+
   function canPlaceAsteroid(ax, ay, fromNode, targetNode){
     if (!fromNode || !targetNode) return false;
     if (dist(ax, ay, fromNode.x, fromNode.y) < 42) return false;
@@ -95,17 +129,20 @@
   const _origPlaceBranch = typeof placeBranch === 'function' ? placeBranch : null;
   placeBranch = function(fromNode, tier, angleOffset){
     const t = TIERS[tier];
-    const baseDist = 220 + Math.min(score * 1.6, 80);
-    const baseAngle = -Math.PI/2 + angleOffset;
+    const mobilePortrait = isMobilePortraitGameplay();
+    const distScale = mobilePortrait ? 0.82 : 1;
+    const angleScale = mobilePortrait ? 0.82 : 1;
+    const baseDist = (220 + Math.min(score * 1.6, 80)) * distScale;
+    const baseAngle = -Math.PI/2 + (angleOffset * angleScale);
 
     let nx, ny, attempts = 0, distance;
     do {
-      distance = baseDist * t.distMul + rand(-24, 24);
-      const angle = baseAngle + rand(-0.16, 0.16);
+      distance = baseDist * t.distMul + rand(mobilePortrait ? -18 : -24, mobilePortrait ? 18 : 24);
+      const angle = baseAngle + rand(-0.16, 0.16) * angleScale;
       nx = fromNode.x + Math.cos(angle) * distance;
       ny = fromNode.y + Math.sin(angle) * distance;
       attempts++;
-    } while(attempts < 18 && isTooClose(nx, ny, 158));
+    } while(attempts < 28 && (isTooClose(nx, ny, mobilePortrait ? 146 : 158) || !isSpawnInsideGameplayView(nx, ny, fromNode)));
 
     const phase = getPhase();
     let isMoving = false;

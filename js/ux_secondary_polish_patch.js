@@ -1,241 +1,438 @@
 
 (function(){
-  const _origDrawMenuUI = typeof drawMenuUI === 'function' ? drawMenuUI : null;
+  const _origIsMenuScreenScrollable = typeof isMenuScreenScrollable === 'function' ? isMenuScreenScrollable : null;
   const _origGetMenuScrollViewport = typeof getMenuScrollViewport === 'function' ? getMenuScrollViewport : null;
+  const _origDrawMenuUI = typeof drawMenuUI === 'function' ? drawMenuUI : null;
 
-  function isPhone(){
-    return W <= 480;
-  }
-
-  function getSafeBottomPad(){
-    return isPhone() ? 96 : 24;
-  }
-
-  function countUnlockedSkins(){
-    try { return unlockedSkins ? unlockedSkins.size : 0; } catch(e){ return 0; }
-  }
-
-  function countTotalSkins(){
-    try { return Object.keys(SKINS || {}).length; } catch(e){ return 0; }
-  }
-
-  function countUnlockedBgs(){
-    try { return unlockedBgs ? unlockedBgs.size : 0; } catch(e){ return 0; }
-  }
-
-  function countTotalBgs(){
-    try { return Object.keys(BACKGROUNDS || {}).length; } catch(e){ return 0; }
-  }
-
-  function stageFor(screen){
-    const phone = isPhone();
-    switch(screen){
-      case 'skins': {
-        const x = 12;
-        const y = phone ? 84 : H * 0.105;
-        const w = phone ? (W - 24) : 430;
-        const h = H - y - getSafeBottomPad();
-        return { x, y, w, h, accent:'#c084fc', subtitle:'Coleção de pilotos e raridades', hint:'Toque em uma skin para equipar.', topChipY:y-16 };
-      }
-      case 'backgrounds': {
-        const x = phone ? 10 : (W - 390) / 2;
-        const y = phone ? 76 : H * 0.07;
-        const w = phone ? (W - 20) : 390;
-        const h = H - y - getSafeBottomPad();
-        return { x, y, w, h, accent:'#70a1ff', subtitle:'Ambientes cósmicos desbloqueáveis', hint:'Toque em um fundo para equipar.', topChipY:y-18 };
-      }
-      case 'stats': {
-        const x = phone ? 10 : (W - 620) / 2;
-        const y = phone ? 86 : H * 0.10;
-        const w = phone ? (W - 20) : 620;
-        const h = H - y - getSafeBottomPad();
-        return { x, y, w, h, accent:'#ffd32a', subtitle:'Seu desempenho, progresso e marcos', hint:'Use esta tela para acompanhar sua evolução.', topChipY:y-14 };
-      }
-      case 'settings': {
-        const w = phone ? (W - 24) : 380;
-        const x = (W - w) / 2;
-        const y = phone ? 84 : H * 0.10;
-        const h = H - y - getSafeBottomPad();
-        return { x, y, w, h, accent:'#a0a0c0', subtitle:'Conta, áudio, instalação e preferências', hint:'Tudo o que muda o app fica aqui.', topChipY:y-14 };
-      }
-      case 'ranking': {
-        const x = 10;
-        const y = phone ? 96 : H * 0.105;
-        const w = W - 20;
-        const h = H - y - getSafeBottomPad();
-        return { x, y, w, h, accent:'#ff6b9d', subtitle:'Posição atual, rival imediato e metas', hint:'Jogue mais uma para subir.', topChipY:y-16 };
-      }
-      case 'career': {
-        const x = phone ? 10 : Math.max(10, (W - 760) / 2);
-        const y = phone ? 84 : H * 0.10;
-        const w = phone ? (W - 20) : Math.min(760, W - 20);
-        const h = H - y - getSafeBottomPad();
-        return { x, y, w, h, accent:'#ffd32a', subtitle:'XP, títulos e metas de longo prazo', hint:'Progressão sem afetar a justiça competitiva.', topChipY:y-14 };
-      }
+  function getSecondaryMeta(){
+    switch(menuScreen){
+      case 'skins':
+        return { subtitle:'Coleção de pilotos e raridades', hint:'Toque em uma skin para equipar.', accent:'#c084fc', width:560, stageY:0.11, chipY:0.092, chipW:320, footerW:310 };
+      case 'backgrounds':
+        return { subtitle:'Ambientes cósmicos desbloqueáveis', hint:'Toque em um fundo para equipar.', accent:'#70a1ff', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+      case 'stats':
+        return { subtitle:'Seu desempenho, progresso e marcos', hint:'Use esta tela para acompanhar sua evolução.', accent:'#ffd32a', width:620, stageY:0.10, chipY:0.092, chipW:300, footerW:320 };
+      case 'settings':
+        return { subtitle:'Conta, áudio, instalação e preferências', hint:'Tudo o que muda o app fica aqui.', accent:'#a0a0c0', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:260 };
+      case 'ranking':
+        return { subtitle:'Posição atual, rival imediato e metas', hint:'Jogue mais uma para subir.', accent:'#ff6b9d', width:null, stageY:0.13, chipY:0.0, chipW:0, footerW:0, hideChip:true, hideFooter:true };
+      case 'career':
+        return { subtitle:'XP, títulos e metas de longo prazo', hint:'Progressão sem afetar a justiça competitiva.', accent:'#ffd32a', width:440, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+      case 'login':
+        return { subtitle:'Entre para salvar e disputar o ranking', hint:'Sua conta sincroniza nickname e recorde.', accent:'#00f5d4', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+      case 'nickname':
+      case 'changeNickname':
+        return { subtitle:'Defina sua identidade competitiva', hint:'Seu apelido aparece no ranking global.', accent:'#00f5d4', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+      case 'confirmDelete':
+        return { subtitle:'Ação irreversível', hint:'Revise antes de apagar seus dados.', accent:'#ff4757', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:300 };
+      case 'installHelp':
+        return { subtitle:'Transforme o jogo em app', hint:'Instalar reduz fricção de retorno.', accent:'#7bed9f', width:380, stageY:0.11, chipY:0.092, chipW:300, footerW:320 };
+      case 'debug':
+        return { subtitle:'Ferramentas internas de validação', hint:'Use para testar sem quebrar o fluxo real.', accent:'#00f5d4', width:720, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
       default:
         return null;
     }
   }
 
-  function drawStage(meta){
+  function getStageRect(meta){
+    const margin = 14;
+    const w = meta && meta.width ? Math.min(W - margin*2, meta.width) : (W - margin*2);
+    const y = H * ((meta && meta.stageY) ? meta.stageY : 0.11);
+    return { x:(W-w)/2, y, w, h:H*0.82 };
+  }
+
+  function drawSecondaryStage(meta){
+    const rect = getStageRect(meta);
     X.save();
-    const g = X.createLinearGradient(meta.x, meta.y, meta.x, meta.y + meta.h);
-    g.addColorStop(0, 'rgba(4,7,24,0.42)');
-    g.addColorStop(0.55, 'rgba(3,5,18,0.18)');
-    g.addColorStop(1, 'rgba(2,4,15,0.38)');
+
+    const shadow = X.createRadialGradient(W/2, rect.y + rect.h*0.24, 0, W/2, rect.y + rect.h*0.24, Math.max(W, H)*0.72);
+    shadow.addColorStop(0, 'rgba(90,120,255,0.09)');
+    shadow.addColorStop(1, 'rgba(90,120,255,0)');
+    X.fillStyle = shadow;
+    X.fillRect(0, 0, W, H);
+
+    const g = X.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+    g.addColorStop(0, 'rgba(4,7,24,0.44)');
+    g.addColorStop(0.5, 'rgba(3,5,18,0.18)');
+    g.addColorStop(1, 'rgba(2,4,15,0.40)');
     X.fillStyle = g;
-    roundRect(meta.x, meta.y, meta.w, meta.h, isPhone() ? 14 : 18); X.fill();
+    roundRect(rect.x, rect.y, rect.w, rect.h, 18);
+    X.fill();
 
-    X.strokeStyle = 'rgba(255,255,255,0.08)';
+    X.globalAlpha = 0.88;
+    X.strokeStyle = 'rgba(255,255,255,0.07)';
     X.lineWidth = 1;
-    roundRect(meta.x, meta.y, meta.w, meta.h, isPhone() ? 14 : 18); X.stroke();
-
-    X.globalAlpha = 0.68;
-    X.strokeStyle = meta.accent;
-    X.lineWidth = 1.2;
-    X.beginPath();
-    X.moveTo(meta.x + 16, meta.y + 12);
-    X.lineTo(meta.x + meta.w - 16, meta.y + 12);
+    roundRect(rect.x, rect.y, rect.w, rect.h, 18);
     X.stroke();
-    X.globalAlpha = 1;
+
+    X.globalAlpha = 0.62;
+    X.strokeStyle = meta.accent;
+    X.lineWidth = 1.3;
+    X.beginPath();
+    X.moveTo(rect.x + 18, rect.y + 10);
+    X.lineTo(rect.x + rect.w - 18, rect.y + 10);
+    X.stroke();
+
     X.restore();
   }
 
-  function shouldHideSubChip(){
-    return isPhone() && (menuScreen === 'skins' || menuScreen === 'backgrounds' || menuScreen === 'ranking');
-  }
+  function drawSecondarySubheader(meta){
+    if (!meta || meta.hideChip) return;
+    const chipW = Math.min(W*0.68, meta.chipW || 320);
+    const chipH = 24;
+    const x = (W - chipW) / 2;
+    const y = H * (meta.chipY || 0.092);
 
-  function drawSubChip(meta){
-    if (shouldHideSubChip()) return;
-    const chipW = Math.min(meta.w * (isPhone() ? 0.78 : 0.72), isPhone() ? 280 : 320);
-    const chipH = isPhone() ? 20 : 24;
-    const x = meta.x + (meta.w - chipW) / 2;
-    const y = meta.topChipY;
     X.save();
-    X.fillStyle = 'rgba(0,0,0,0.55)';
-    roundRect(x, y, chipW, chipH, 12); X.fill();
+    X.globalAlpha = 0.88;
+    const g = X.createLinearGradient(x, y, x, y + chipH);
+    g.addColorStop(0, 'rgba(0,0,0,0.56)');
+    g.addColorStop(1, 'rgba(0,0,0,0.30)');
+    X.fillStyle = g;
+    roundRect(x, y, chipW, chipH, 12);
+    X.fill();
+
     X.strokeStyle = meta.accent;
     X.lineWidth = 1.1;
-    roundRect(x, y, chipW, chipH, 12); X.stroke();
-    X.fillStyle = '#fff';
-    X.font = (isPhone() ? '10px' : '11px') + ' -apple-system, system-ui, sans-serif';
+    roundRect(x, y, chipW, chipH, 12);
+    X.stroke();
+
+    X.fillStyle = '#ffffff';
+    X.font = '11px -apple-system, system-ui, sans-serif';
     X.textAlign = 'center';
     X.textBaseline = 'middle';
     X.fillText(meta.subtitle, x + chipW/2, y + chipH/2 + 0.5);
     X.restore();
   }
 
-  function drawHintChip(meta){
-    if(menuScreen === 'ranking') return;
-    const chipW = Math.min(meta.w * (isPhone() ? 0.82 : 0.78), 340);
-    const chipH = isPhone() ? 22 : 24;
-    const x = meta.x + (meta.w - chipW) / 2;
-    const y = Math.min(meta.y + meta.h - chipH - 8, H - getSafeBottomPad() + 4 - chipH);
+  function drawSecondaryFooter(meta){
+    if(!meta || meta.hideFooter) return;
+    const chipW = Math.min(W*0.72, meta.footerW || 330);
+    const chipH = 24;
+    const x = (W - chipW) / 2;
+    const y = H - 32;
+
     X.save();
-    X.fillStyle = 'rgba(0,0,0,0.58)';
-    roundRect(x, y, chipW, chipH, 12); X.fill();
-    X.strokeStyle = 'rgba(255,255,255,0.08)';
+    X.globalAlpha = 0.62;
+    X.fillStyle = 'rgba(0,0,0,0.54)';
+    roundRect(x, y, chipW, chipH, 12);
+    X.fill();
+    X.strokeStyle = 'rgba(255,255,255,0.09)';
     X.lineWidth = 1;
-    roundRect(x, y, chipW, chipH, 12); X.stroke();
+    roundRect(x, y, chipW, chipH, 12);
+    X.stroke();
+
     X.fillStyle = meta.accent;
-    X.font = (isPhone() ? '9px' : '10px') + ' -apple-system, system-ui, sans-serif';
+    X.font = '10px -apple-system, system-ui, sans-serif';
     X.textAlign = 'center';
     X.textBaseline = 'middle';
     X.fillText(meta.hint, x + chipW/2, y + chipH/2 + 0.5);
     X.restore();
   }
 
-  function getCompactHeader(){
-    switch(menuScreen){
-      case 'skins':
-        return { title:'SKINS', sub: countUnlockedSkins() + ' / ' + countTotalSkins() + ' DESBLOQUEADAS', accent:'#c084fc' };
-      case 'backgrounds':
-        return { title:'FUNDOS', sub: countUnlockedBgs() + ' / ' + countTotalBgs() + ' DESBLOQUEADOS', accent:'#70a1ff' };
-      case 'ranking':
-        return { title:'RANKING', sub:'competitivo', accent:'#ff6b9d' };
-      case 'stats':
-        return { title:'ESTATÍSTICAS', sub:'desempenho', accent:'#ffd32a' };
-      case 'career':
-        return { title:'CARREIRA', sub:'progressão', accent:'#ffd32a' };
-      case 'settings':
-        return { title:'CONFIG', sub:'preferências', accent:'#a0a0c0' };
-      default:
-        return null;
+  function drawEdgeFocusVignette(meta){
+    if (meta && meta.width && meta.width < W-30) {
+      X.save();
+      const gx = (W - Math.min(W-28, meta.width))/2;
+      const left = X.createLinearGradient(0,0,gx+30,0);
+      left.addColorStop(0,'rgba(2,4,18,0.42)');
+      left.addColorStop(1,'rgba(2,4,18,0)');
+      X.fillStyle = left;
+      X.fillRect(0,0,gx+30,H);
+
+      const right = X.createLinearGradient(W-gx-30,0,W,0);
+      right.addColorStop(0,'rgba(2,4,18,0)');
+      right.addColorStop(1,'rgba(2,4,18,0.42)');
+      X.fillStyle = right;
+      X.fillRect(W-gx-30,0,gx+30,H);
+      X.restore();
+      return;
     }
-  }
-
-  function drawCompactHeaderMaskAndText(){
-    if (!isPhone()) return;
-    const h = getCompactHeader();
-    if (!h) return;
-
-    const boxX = 88;
-    const boxW = Math.max(150, W - 176);
-    const boxY = 8;
-    const boxH = 58;
 
     X.save();
-    X.fillStyle = 'rgba(2,4,15,0.96)';
-    roundRect(boxX, boxY, boxW, boxH, 14); X.fill();
+    const left = X.createLinearGradient(0,0,60,0);
+    left.addColorStop(0,'rgba(2,4,18,0.42)');
+    left.addColorStop(1,'rgba(2,4,18,0)');
+    X.fillStyle = left;
+    X.fillRect(0,0,60,H);
 
-    X.textAlign = 'center';
-    X.textBaseline = 'middle';
-    X.fillStyle = '#e8e8ff';
-    X.font = (menuScreen === 'ranking' ? 'bold 17px' : 'bold 18px') + ' -apple-system, system-ui, sans-serif';
-    X.fillText(h.title, boxX + boxW/2, boxY + 23);
-
-    X.fillStyle = 'rgba(255,255,255,0.62)';
-    X.font = '10px -apple-system, system-ui, sans-serif';
-    X.fillText(h.sub, boxX + boxW/2, boxY + 42);
+    const right = X.createLinearGradient(W-60,0,W,0);
+    right.addColorStop(0,'rgba(2,4,18,0)');
+    right.addColorStop(1,'rgba(2,4,18,0.42)');
+    X.fillStyle = right;
+    X.fillRect(W-60,0,60,H);
     X.restore();
   }
 
-  function refineStats(){
-    const meta = stageFor('stats');
-    if (!meta) return;
-    const achY = meta.y + (isPhone() ? 286 : 320);
-    X.save();
-    X.globalAlpha = 0.15;
-    X.fillStyle = 'rgba(255,255,255,0.03)';
-    roundRect(meta.x + (isPhone() ? 28 : 90), achY, meta.w - (isPhone() ? 56 : 180), isPhone() ? 116 : 122, 14); X.fill();
-    X.restore();
+  function getContentRect(width){
+    const w = Math.min(W-28, width);
+    return { x:(W-w)/2, w };
   }
 
-  function refineCareer(){
-    const meta = stageFor('career');
-    if (!meta) return;
-    X.save();
-    X.globalAlpha = 0.10;
-    X.fillStyle = 'rgba(255,255,255,0.03)';
-    roundRect(meta.x + 10, meta.y + 16, meta.w - 20, isPhone() ? 70 : 86, 12); X.fill();
-    roundRect(meta.x + 10, meta.y + (isPhone() ? 96 : 116), meta.w - 20, isPhone() ? 122 : 122, 12); X.fill();
-    roundRect(meta.x + 10, meta.y + (isPhone() ? 228 : 250), meta.w - 20, isPhone() ? 104 : 112, 12); X.fill();
-    roundRect(meta.x + 10, meta.y + (isPhone() ? 344 : 374), meta.w - 20, isPhone() ? 74 : 88, 12); X.fill();
-    X.restore();
-  }
+  // Re-layout SKINS to fit the centered shell instead of the full screen width.
+  if (typeof drawSkinsMenu === 'function') {
+    drawSkinsMenu = function(){
+      X.textAlign='center'; X.textBaseline='middle';
 
-  if (_origDrawMenuUI) {
-    drawMenuUI = function(){
-      const meta = stageFor(menuScreen);
-      if (meta) drawStage(meta);
+      X.fillStyle='#e0e0ff';
+      X.font='bold 30px -apple-system, system-ui, sans-serif';
+      X.shadowColor='#b0b0ff'; X.shadowBlur=15;
+      X.fillText('SKINS',W/2,H*0.06);
+      X.shadowBlur=0;
 
-      _origDrawMenuUI.apply(this, arguments);
+      X.fillStyle='rgba(255,255,255,0.5)';
+      X.font='12px -apple-system, system-ui, sans-serif';
+      const totalSkins=Object.keys(SKINS).length;
+      X.fillText(unlockedSkins.length+' / '+totalSkins+' DESBLOQUEADAS',W/2,H*0.06+22);
 
-      if (meta) {
-        drawCompactHeaderMaskAndText();
-        drawSubChip(meta);
-        drawHintChip(meta);
+      drawBackBtn();
 
-        if (menuScreen === 'stats') refineStats();
-        if (menuScreen === 'career') refineCareer();
+      const rarities=['common','rare','legendary','stellar'];
+      const skinsByRarity={common:[],rare:[],legendary:[],stellar:[]};
+      for(const k in SKINS) skinsByRarity[SKINS[k].rarity].push(k);
+
+      const box = getContentRect(520);
+      const itemSize=70, gap=12;
+      const cols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
+      const gridW = cols*(itemSize+gap)-gap;
+      const headerX = box.x + 4;
+      const contentStartY=H*0.13;
+      let curY=contentStartY;
+      const viewport = beginMenuScrollClip();
+
+      for(const rarity of rarities){
+        const skins=skinsByRarity[rarity];
+        if(!skins.length) continue;
+
+        X.fillStyle=getRarityColor(rarity);
+        X.font='bold 13px -apple-system, system-ui, sans-serif';
+        X.textAlign='left';
+        X.shadowColor=getRarityColor(rarity); X.shadowBlur=8;
+        X.fillText(getRarityName(rarity), headerX, curY);
+        X.shadowBlur=0;
+        curY+=22;
+
+        let col=0;
+        let startX=(W-gridW)/2;
+        for(let idx=0; idx<skins.length; idx++){
+          const skinKey=skins[idx];
+          const skin=SKINS[skinKey];
+          const ix=startX+col*(itemSize+gap);
+          const iy=curY;
+          const screenY=iy+menuScrollY;
+          const isUnlocked=unlockedSkins.includes(skinKey);
+          const isSelected=selectedSkin===skinKey;
+
+          X.globalAlpha=isUnlocked?0.6:0.3;
+          X.fillStyle='#000';
+          roundRect(ix,iy,itemSize,itemSize,10); X.fill();
+
+          X.globalAlpha=1;
+          X.strokeStyle=isSelected?'#ffd32a':getRarityColor(rarity);
+          X.lineWidth=isSelected?3:1.5;
+          if(isSelected){ X.shadowColor='#ffd32a'; X.shadowBlur=12; }
+          roundRect(ix,iy,itemSize,itemSize,10); X.stroke();
+          X.shadowBlur=0;
+
+          if(isUnlocked){
+            X.save();
+            drawBallAt(ix+itemSize/2, iy+itemSize/2-4, 1, false, skinKey);
+            X.restore();
+
+            X.fillStyle='#fff';
+            X.font='bold 9px -apple-system, system-ui, sans-serif';
+            X.textAlign='center';
+            X.fillText(skin.name,ix+itemSize/2,iy+itemSize-8);
+
+            menuBtnAreas.push({
+              x:ix,y:screenY,w:itemSize,h:itemSize,
+              action:()=>{ selectedSkin=skinKey; saveData(); }
+            });
+          } else {
+            X.fillStyle='rgba(255,255,255,0.3)';
+            X.font='24px sans-serif';
+            X.textAlign='center';
+            X.fillText('🔒',ix+itemSize/2,iy+itemSize/2-4);
+
+            X.fillStyle='rgba(255,255,255,0.5)';
+            X.font='9px -apple-system, system-ui, sans-serif';
+            X.fillText(skin.unlock+' pts',ix+itemSize/2,iy+itemSize-8);
+          }
+
+          col++;
+          if(col>=cols){ col=0; curY+=itemSize+gap; }
+        }
+        if(col>0) curY+=itemSize+gap;
+        curY+=10;
       }
+
+      endMenuScrollClip();
+      setMenuScrollBounds(contentStartY, curY, viewport);
+      drawMenuScrollBar(viewport);
+      drawMenuScrollFades(viewport);
     };
   }
 
+  // Re-layout STATS so achievements stay centered inside the stage.
+  if (typeof drawStatsMenu === 'function') {
+    drawStatsMenu = function(){
+      X.textAlign='center'; X.textBaseline='middle';
+
+      X.fillStyle='#e0e0ff';
+      X.font='bold 30px -apple-system, system-ui, sans-serif';
+      X.shadowColor='#ffd32a'; X.shadowBlur=15;
+      X.fillText('ESTATÍSTICAS',W/2,H*0.06);
+      X.shadowBlur=0;
+
+      drawBackBtn();
+
+      const stats=[
+        {label:'RECORDE',value:best,color:'#00f5d4'},
+        {label:'PARTIDAS',value:totalGames,color:'#70a1ff'},
+        {label:'PONTOS TOTAIS',value:totalScoreEver,color:'#ffd32a'},
+        {label:'NÓS CAPTURADOS',value:totalNodesEver,color:'#c084fc'},
+        {label:'MELHOR COMBO',value:'x'+bestComboEver,color:'#ff6b9d'},
+        {label:'NÓS DOURADOS',value:totalGoldCaptured,color:'#ffd700'},
+        {label:'FASE MAIS ALTA',value:highestPhase,color:'#7bed9f'},
+        {label:'SKINS',value:unlockedSkins.length+'/'+Object.keys(SKINS).length,color:'#c084fc'},
+      ];
+
+      const box = getContentRect(560);
+      const contentStartY = H*0.13;
+      let curY = contentStartY;
+      const viewport = beginMenuScrollClip();
+
+      const cols=2;
+      const gap=10;
+      const cellW=Math.min((box.w-gap)/2, 210);
+      const cellH=58;
+      const startX=(W-(cols*cellW+gap))/2;
+
+      for(let i=0;i<stats.length;i++){
+        const s=stats[i];
+        const col=i%cols;
+        const row=Math.floor(i/cols);
+        const cx=startX+col*(cellW+gap);
+        const cy=curY+row*(cellH+gap);
+
+        X.globalAlpha=0.74;
+        const bg=X.createLinearGradient(cx,cy,cx,cy+cellH);
+        bg.addColorStop(0,'rgba(0,0,0,0.60)');
+        bg.addColorStop(1,'rgba(0,0,0,0.84)');
+        X.fillStyle=bg;
+        roundRect(cx,cy,cellW,cellH,8); X.fill();
+
+        X.strokeStyle=s.color;
+        X.lineWidth=1;
+        X.globalAlpha=0.56;
+        roundRect(cx,cy,cellW,cellH,8); X.stroke();
+        X.globalAlpha=1;
+
+        X.fillStyle=s.color;
+        X.font='bold 9px -apple-system, system-ui, sans-serif';
+        X.textAlign='center';
+        X.fillText(s.label,cx+cellW/2,cy+14);
+
+        X.fillStyle='#fff';
+        X.font='bold 20px -apple-system, system-ui, sans-serif';
+        X.fillText(s.value,cx+cellW/2,cy+36);
+      }
+
+      curY += Math.ceil(stats.length/cols)*(cellH+gap) + 12;
+
+      if(currentUser){
+        drawMissionInfoCard((W-Math.min(box.w, 360))/2, curY, Math.min(box.w, 360), false);
+        curY += 102;
+      }
+
+      X.fillStyle='#ffd32a';
+      X.font='bold 12px -apple-system, system-ui, sans-serif';
+      X.textAlign='center';
+      X.fillText('CONQUISTAS '+achievements.length+'/'+Object.keys(ACHIEVEMENTS).length, W/2, curY);
+
+      const aSize=42, aGap=8;
+      const usableW = Math.min(box.w, 420);
+      const aPerRow=Math.max(3, Math.floor((usableW + aGap)/(aSize+aGap)));
+      const allAch=Object.keys(ACHIEVEMENTS);
+      const rowW=aPerRow*(aSize+aGap)-aGap;
+      const aStartX=(W-rowW)/2;
+      let aCurY=curY+18;
+
+      for(let i=0;i<allAch.length;i++){
+        const k=allAch[i];
+        const a=ACHIEVEMENTS[k];
+        const unlocked=achievements.includes(k);
+        const ac=i%aPerRow;
+        const ar=Math.floor(i/aPerRow);
+        const ax=aStartX+ac*(aSize+aGap);
+        const ay=aCurY+ar*(aSize+aGap);
+        const screenY=ay+menuScrollY;
+
+        X.globalAlpha=unlocked?0.9:0.3;
+        X.fillStyle=unlocked?'rgba(255,211,42,0.2)':'rgba(0,0,0,0.5)';
+        roundRect(ax,ay,aSize,aSize,8); X.fill();
+
+        X.strokeStyle=unlocked?'#ffd32a':'#444';
+        X.lineWidth=1.5;
+        if(unlocked){ X.shadowColor='#ffd32a'; X.shadowBlur=8; }
+        roundRect(ax,ay,aSize,aSize,8); X.stroke();
+        X.shadowBlur=0;
+
+        X.globalAlpha=unlocked?1:0.3;
+        X.font='22px sans-serif';
+        X.textAlign='center'; X.textBaseline='middle';
+        X.fillStyle=unlocked?'#fff':'#666';
+        X.fillText(unlocked?a.icon:'🔒',ax+aSize/2,ay+aSize/2);
+
+        menuBtnAreas.push({ x:ax,y:screenY,w:aSize,h:aSize, action:()=>{} });
+      }
+      X.globalAlpha=1;
+
+      curY = aCurY + Math.ceil(allAch.length / aPerRow)*(aSize+aGap) + 10;
+
+      X.fillStyle='rgba(255,255,255,0.4)';
+      X.font='10px -apple-system, system-ui, sans-serif';
+      X.textAlign='center';
+      X.fillText('Continue jogando para desbloquear mais!', W/2, curY);
+
+      curY += 20;
+      endMenuScrollClip();
+      setMenuScrollBounds(contentStartY, curY, viewport);
+      drawMenuScrollBar(viewport);
+      drawMenuScrollFades(viewport);
+    };
+  }
+
+  isMenuScreenScrollable = function(){
+    const baseScrollable = _origIsMenuScreenScrollable ? _origIsMenuScreenScrollable() : false;
+    return baseScrollable || menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking';
+  };
+
   getMenuScrollViewport = function(){
-    if (menuScreen === 'backgrounds') return { top:isPhone()?72:H*0.07, bottom:H-getSafeBottomPad()+8 };
-    if (menuScreen === 'career') return { top:isPhone()?84:H*0.10, bottom:H-getSafeBottomPad()+6 };
-    if (_origGetMenuScrollViewport) return _origGetMenuScrollViewport();
+    if(_origGetMenuScrollViewport){
+      const vp = _origGetMenuScrollViewport();
+      if(vp) return vp;
+    }
+    if(menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking'){
+      return { top:H*0.135, bottom:H-18 };
+    }
     return null;
   };
+
+  if(_origDrawMenuUI){
+    drawMenuUI = function(){
+      const meta = getSecondaryMeta();
+      if(meta){
+        drawSecondaryStage(meta);
+        drawEdgeFocusVignette(meta);
+      }
+
+      _origDrawMenuUI.apply(this, arguments);
+
+      if(meta){
+        drawSecondarySubheader(meta);
+        drawSecondaryFooter(meta);
+      }
+    };
+  }
 })();

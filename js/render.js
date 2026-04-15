@@ -9,55 +9,36 @@ function pickRandom(list){
   return list[Math.floor(Math.random()*list.length)];
 }
 
-function isPortraitPhoneCanvas(){
-  return W <= 560 && H >= W * 1.25;
-}
-
 function buildBackgroundDecorLayout(){
-  const mobilePortrait = isPortraitPhoneCanvas();
-  const leftX  = () => mobilePortrait ? rand(W*0.04, W*0.14) : rand(W*0.12, W*0.28);
-  const rightX = () => mobilePortrait ? rand(W*0.86, W*0.96) : rand(W*0.72, W*0.88);
-  const topY   = () => mobilePortrait ? rand(H*0.10, H*0.22) : rand(H*0.14, H*0.30);
-  const midY   = () => mobilePortrait ? rand(H*0.26, H*0.48) : rand(H*0.34, H*0.56);
-  const lowY   = () => mobilePortrait ? rand(H*0.78, H*0.90) : rand(H*0.72, H*0.86);
+  const leftX  = () => rand(W*0.12, W*0.28);
+  const rightX = () => rand(W*0.72, W*0.88);
+  const topY   = () => rand(H*0.14, H*0.30);
+  const midY   = () => rand(H*0.34, H*0.56);
+  const lowY   = () => rand(H*0.72, H*0.86);
 
   const blackSide = Math.random() < 0.5 ? 'left' : 'right';
   const blackX = blackSide === 'left' ? leftX() : rightX();
   const blackY = lowY();
 
   const redSide = Math.random() < 0.5 ? 'left' : 'right';
-  const redX = mobilePortrait
-    ? (redSide === 'left' ? rand(-W*0.06, W*0.04) : rand(W*0.96, W*1.06))
-    : (redSide === 'left' ? rand(W*0.18, W*0.34) : rand(W*0.66, W*0.82));
-  const redY = mobilePortrait ? rand(H*0.10, H*0.18) : topY();
+  const redX = redSide === 'left' ? rand(W*0.18, W*0.34) : rand(W*0.66, W*0.82);
+  const redY = topY();
 
-  const pulsarOptions = mobilePortrait
-    ? [
-        { x: rand(-W*0.05, W*0.05), y: rand(H*0.10, H*0.20), side:'left' },
-        { x: rand(W*0.95, W*1.05), y: rand(H*0.10, H*0.20), side:'right' },
-        { x: rand(-W*0.05, W*0.04), y: rand(H*0.30, H*0.40), side:'left' },
-        { x: rand(W*0.96, W*1.05), y: rand(H*0.30, H*0.40), side:'right' },
-      ]
-    : [
-        { x: rand(W*0.14, W*0.28), y: rand(H*0.18, H*0.32), side:'left' },
-        { x: rand(W*0.72, W*0.86), y: rand(H*0.18, H*0.32), side:'right' },
-        { x: rand(W*0.10, W*0.18), y: midY(), side:'left' },
-        { x: rand(W*0.82, W*0.90), y: midY(), side:'right' },
-      ];
+  const pulsarOptions = [
+    { x: rand(W*0.14, W*0.28), y: rand(H*0.18, H*0.32) },
+    { x: rand(W*0.72, W*0.86), y: rand(H*0.18, H*0.32) },
+    { x: rand(W*0.10, W*0.18), y: midY() },
+    { x: rand(W*0.82, W*0.90), y: midY() },
+  ];
   const pulsar = pickRandom(pulsarOptions);
   const radial = Math.atan2(pulsar.y - H/2, pulsar.x - W/2);
 
-  const saturnOptions = mobilePortrait
-    ? [
-        { x: rand(-W*0.08, W*0.05), y: rand(H*0.14, H*0.26), side:'left'  },
-        { x: rand(W*0.95, W*1.08), y: rand(H*0.14, H*0.26), side:'right' },
-      ]
-    : [
-        { x: rand(W*0.08, W*0.18), y: rand(H*0.22, H*0.36), side:'left'  },
-        { x: rand(W*0.82, W*0.92), y: rand(H*0.22, H*0.36), side:'right' },
-        { x: rand(W*0.10, W*0.20), y: rand(H*0.48, H*0.62), side:'left'  },
-        { x: rand(W*0.80, W*0.90), y: rand(H*0.48, H*0.62), side:'right' },
-      ];
+  const saturnOptions = [
+    { x: rand(W*0.08, W*0.18), y: rand(H*0.22, H*0.36), side:'left'  },
+    { x: rand(W*0.82, W*0.92), y: rand(H*0.22, H*0.36), side:'right' },
+    { x: rand(W*0.10, W*0.20), y: rand(H*0.48, H*0.62), side:'left'  },
+    { x: rand(W*0.80, W*0.90), y: rand(H*0.48, H*0.62), side:'right' },
+  ];
   const saturn = pickRandom(saturnOptions);
 
   bgDecorLayout = {
@@ -72,8 +53,7 @@ function buildBackgroundDecorLayout(){
     redgiant: {
       x: redX,
       y: redY,
-      side: redSide,
-      starR: mobilePortrait ? rand(54, 66) : rand(64, 80),
+      starR: rand(64, 80),
     },
     galaxy: (() => {
       const galaxyOptions = [
@@ -94,17 +74,16 @@ function buildBackgroundDecorLayout(){
     pulsar: {
       x: pulsar.x,
       y: pulsar.y,
-      side: pulsar.side,
-      scale: mobilePortrait ? rand(0.62, 0.76) : rand(0.90, 1.05),
+      scale: rand(0.90, 1.05),
       beamBase: radial + Math.PI/2 + rand(-0.18, 0.18),
     },
     saturn: {
       x: saturn.x,
       y: saturn.y,
       side: saturn.side,
-      planetR: mobilePortrait ? rand(42, 54) : rand(56, 68),
+      planetR: rand(56, 68),
       ringTilt: saturn.side === 'left' ? rand(0.18, 0.34) : rand(-0.34, -0.18),
-      hazeR: mobilePortrait ? rand(110, 140) : rand(160, 190),
+      hazeR: rand(160, 190),
     },
   };
 }
@@ -247,26 +226,23 @@ function drawBackground(){
   }
 
 else if(bg.type==='redgiant'){
+    // Decorative like Saturn: pushed to the edge, but now random every run.
     X.fillStyle='#08030a';X.fillRect(-10,-10,W+20,H+20);
 
-    const mobileBg = isPortraitPhoneCanvas();
     const decor = getBackgroundDecor('redgiant');
-    const side = decor.side || ((decor.x ?? W*0.9) < W/2 ? 'left' : 'right');
-    const starR = (decor.starR ?? 76) * (mobileBg ? 0.92 : 1);
-    const cx = mobileBg
-      ? (side === 'left' ? -starR*0.18 : W + starR*0.18)
-      : (decor.x ?? W*0.90);
-    const cy = mobileBg ? Math.min(decor.y ?? H*0.15, H*0.16) : (decor.y ?? H*0.18);
-    const atmosphereR = (mobileBg ? 122 : 170) * (starR / (decor.starR ?? 76));
-    const flareAlpha = mobileBg ? 0.10 : 0.16;
+    const cx = decor.x ?? W*0.90;
+    const cy = decor.y ?? H*0.18;
+    const starR = decor.starR ?? 76;
 
-    const ag=X.createRadialGradient(cx,cy,0,cx,cy,atmosphereR);
-    ag.addColorStop(0, mobileBg ? 'rgba(255,110,45,0.08)' : 'rgba(255,110,45,0.12)');
-    ag.addColorStop(0.34, mobileBg ? 'rgba(210,55,20,0.05)' : 'rgba(210,55,20,0.07)');
+    // Softer atmosphere, tighter to the star
+    const ag=X.createRadialGradient(cx,cy,0,cx,cy,170);
+    ag.addColorStop(0,'rgba(255,110,45,0.12)');
+    ag.addColorStop(0.34,'rgba(210,55,20,0.07)');
     ag.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=ag;X.fillRect(-10,-10,W+20,H+20);
 
-    X.shadowColor='rgba(255,70,0,0.28)';X.shadowBlur=mobileBg ? 16 : 22;
+    // Star body
+    X.shadowColor='rgba(255,70,0,0.28)';X.shadowBlur=22;
     const sg=X.createRadialGradient(cx,cy,0,cx,cy,starR);
     sg.addColorStop(0,'#fff4a0');
     sg.addColorStop(0.46,'#ff8a00');
@@ -275,11 +251,12 @@ else if(bg.type==='redgiant'){
     X.beginPath();X.arc(cx,cy,starR+Math.sin(t)*2.2,0,Math.PI*2);X.fill();
     X.shadowBlur=0;
 
+    // More discreet flares
     for(let i=0;i<6;i++){
       const fa=t*0.42+i*Math.PI/3;
       const inner=starR*0.94;
-      const outer=starR+(mobileBg ? 18 : 26)+Math.sin(t*2+i)*(mobileBg ? 4 : 6);
-      X.fillStyle='rgba(255,160,60,' + flareAlpha + ')';
+      const outer=starR+26+Math.sin(t*2+i)*6;
+      X.fillStyle='rgba(255,160,60,0.16)';
       X.beginPath();
       X.moveTo(cx+Math.cos(fa)*inner,cy+Math.sin(fa)*inner);
       X.lineTo(cx+Math.cos(fa)*outer,cy+Math.sin(fa)*outer);
@@ -292,132 +269,129 @@ else if(bg.type==='redgiant'){
 else if(bg.type==='pulsar'){
     X.fillStyle='#030612';X.fillRect(-10,-10,W+20,H+20);
 
-    const mobileBg = isPortraitPhoneCanvas();
     const decor = getBackgroundDecor('pulsar');
-    const side = decor.side || ((decor.x ?? W*0.78) < W/2 ? 'left' : 'right');
-    const pScale = (decor.scale ?? 1.0) * (mobileBg ? 0.88 : 1);
-    const pcx = mobileBg
-      ? (side === 'left' ? -W*0.03 : W + W*0.03)
-      : (decor.x ?? W*0.78);
-    const pcy = mobileBg ? Math.min(decor.y ?? H*0.18, H*0.20) : (decor.y ?? H*0.28);
-    const fieldAlpha = mobileBg ? 0.55 : 1;
-    const beamLen = mobileBg ? 250 * pScale : 420 * pScale;
-    const beamWide = mobileBg ? 14 : 26;
-    const beamThin = mobileBg ? 4 : 7;
+    const pcx = decor.x ?? W*0.78;
+    const pcy = decor.y ?? H*0.28;
+    const pScale = decor.scale ?? 1.0;
 
-    const neb1=X.createRadialGradient(pcx,pcy,0,pcx,pcy,(mobileBg ? 170 : 260)*pScale);
-    neb1.addColorStop(0, mobileBg ? 'rgba(80,180,255,0.08)' : 'rgba(80,180,255,0.14)');
-    neb1.addColorStop(0.45, mobileBg ? 'rgba(70,100,255,0.05)' : 'rgba(70,100,255,0.08)');
+    // Deep ambient glows
+    const neb1=X.createRadialGradient(pcx,pcy,0,pcx,pcy,260*pScale);
+    neb1.addColorStop(0,'rgba(80,180,255,0.14)');
+    neb1.addColorStop(0.45,'rgba(70,100,255,0.08)');
     neb1.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=neb1;X.fillRect(-10,-10,W+20,H+20);
 
-    if(!mobileBg){
-      const neb2=X.createRadialGradient(W*0.92,H*0.12,0,W*0.92,H*0.12,220*pScale);
-      neb2.addColorStop(0,'rgba(180,120,255,0.08)');
-      neb2.addColorStop(1,'rgba(0,0,0,0)');
-      X.fillStyle=neb2;X.fillRect(-10,-10,W+20,H+20);
-    }
+    const neb2=X.createRadialGradient(W*0.92,H*0.12,0,W*0.92,H*0.12,220*pScale);
+    neb2.addColorStop(0,'rgba(180,120,255,0.08)');
+    neb2.addColorStop(1,'rgba(0,0,0,0)');
+    X.fillStyle=neb2;X.fillRect(-10,-10,W+20,H+20);
 
+    // Magnetic field arcs
     for(let i=0;i<4;i++){
-      X.globalAlpha=(0.10-i*0.015) * fieldAlpha;
+      X.globalAlpha=0.10-i*0.015;
       X.strokeStyle=i%2===0?'rgba(110,230,255,0.6)':'rgba(150,130,255,0.45)';
-      X.lineWidth=mobileBg ? 1.1 : 1.4;
+      X.lineWidth=1.4;
       X.beginPath();
-      X.ellipse(pcx,pcy,(78+i*18)*pScale,(130+i*22)*pScale,0.55,0.12*Math.PI,0.88*Math.PI);
+      X.ellipse(pcx,pcy,(92+i*22)*pScale,(170+i*26)*pScale,0.55,0.12*Math.PI,0.88*Math.PI);
       X.stroke();
       X.beginPath();
-      X.ellipse(pcx,pcy,(78+i*18)*pScale,(130+i*22)*pScale,-0.55,1.12*Math.PI,1.88*Math.PI);
+      X.ellipse(pcx,pcy,(92+i*22)*pScale,(170+i*26)*pScale,-0.55,1.12*Math.PI,1.88*Math.PI);
       X.stroke();
     }
 
-    const ph=X.createRadialGradient(pcx,pcy,0,pcx,pcy,(mobileBg ? 145 : 210)*pScale);
-    ph.addColorStop(0, mobileBg ? 'rgba(160,245,255,0.10)' : 'rgba(160,245,255,0.18)');
-    ph.addColorStop(0.18, mobileBg ? 'rgba(110,180,255,0.08)' : 'rgba(110,180,255,0.14)');
+    // Radiation halo
+    const ph=X.createRadialGradient(pcx,pcy,0,pcx,pcy,210*pScale);
+    ph.addColorStop(0,'rgba(160,245,255,0.18)');
+    ph.addColorStop(0.18,'rgba(110,180,255,0.14)');
     ph.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=ph;X.fillRect(-10,-10,W+20,H+20);
 
+    // Rotating beams
     const beamA=(decor.beamBase ?? 0.75) + t*0.85;
     for(const off of [0, Math.PI]){
       const ang=beamA+off;
-      X.globalAlpha=mobileBg ? 0.08 : 0.16;
+      X.globalAlpha=0.16;
       X.strokeStyle='rgba(90,225,255,0.95)';
-      X.lineWidth=beamWide;
+      X.lineWidth=26;
       X.beginPath();
-      X.moveTo(pcx-Math.cos(ang)*beamLen,pcy-Math.sin(ang)*beamLen);
-      X.lineTo(pcx+Math.cos(ang)*beamLen,pcy+Math.sin(ang)*beamLen);
+      X.moveTo(pcx-Math.cos(ang)*420*pScale,pcy-Math.sin(ang)*420*pScale);
+      X.lineTo(pcx+Math.cos(ang)*420*pScale,pcy+Math.sin(ang)*420*pScale);
       X.stroke();
 
-      X.globalAlpha=mobileBg ? 0.14 : 0.26;
+      X.globalAlpha=0.26;
       X.strokeStyle='rgba(210,250,255,0.95)';
-      X.lineWidth=beamThin;
+      X.lineWidth=7;
       X.beginPath();
-      X.moveTo(pcx-Math.cos(ang)*beamLen,pcy-Math.sin(ang)*beamLen);
-      X.lineTo(pcx+Math.cos(ang)*beamLen,pcy+Math.sin(ang)*beamLen);
+      X.moveTo(pcx-Math.cos(ang)*420*pScale,pcy-Math.sin(ang)*420*pScale);
+      X.lineTo(pcx+Math.cos(ang)*420*pScale,pcy+Math.sin(ang)*420*pScale);
       X.stroke();
     }
 
-    for(let i=0;i<3+(mobileBg?0:1);i++){
+    // Pulse shock rings
+    for(let i=0;i<4;i++){
       const phase=(t*2.2+i*0.85)%4;
-      const rr=(mobileBg ? 58 : 74)+phase*(mobileBg ? 34 : 46)*pScale;
-      X.globalAlpha=Math.max(0,(mobileBg ? 0.12 : 0.22)-phase*(mobileBg ? 0.030 : 0.045));
+      const rr=(74+phase*46)*pScale;
+      X.globalAlpha=Math.max(0,0.22-phase*0.045);
       X.strokeStyle=i%2===0?'rgba(130,250,255,0.9)':'rgba(110,150,255,0.7)';
-      X.lineWidth=(mobileBg ? 1.7 : 2.4)-phase*0.2;
+      X.lineWidth=2.4-phase*0.2;
       X.beginPath();X.arc(pcx,pcy,rr,0,Math.PI*2);X.stroke();
     }
 
+    // Core corona
     X.globalAlpha=1;
-    X.shadowColor='#8ffcff';X.shadowBlur=mobileBg ? 22 : 32;
-    const pg=X.createRadialGradient(pcx,pcy,0,pcx,pcy,(mobileBg ? 62 : 88)*pScale);
+    X.shadowColor='#8ffcff';X.shadowBlur=32;
+    const pg=X.createRadialGradient(pcx,pcy,0,pcx,pcy,88*pScale);
     pg.addColorStop(0,'#fffad8');
     pg.addColorStop(0.14,'#a9ffff');
     pg.addColorStop(0.32,'#56b8ff');
     pg.addColorStop(0.58,'rgba(90,130,255,0.55)');
     pg.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=pg;
-    X.beginPath();X.arc(pcx,pcy,(mobileBg ? 54 : 82)*pScale,0,Math.PI*2);X.fill();
+    X.beginPath();X.arc(pcx,pcy,82*pScale,0,Math.PI*2);X.fill();
     X.shadowBlur=0;
 
+    // Compact bright star
     X.fillStyle='#fffbe9';
-    X.beginPath();X.arc(pcx,pcy,(mobileBg ? 9 : 12)*pScale,0,Math.PI*2);X.fill();
-    X.strokeStyle='rgba(255,255,255,0.85)';X.lineWidth=mobileBg ? 1.6 : 2;
+    X.beginPath();X.arc(pcx,pcy,12*pScale,0,Math.PI*2);X.fill();
+    X.strokeStyle='rgba(255,255,255,0.85)';X.lineWidth=2;
     X.beginPath();
-    X.moveTo(pcx-(mobileBg ? 18 : 24)*pScale,pcy);X.lineTo(pcx+(mobileBg ? 18 : 24)*pScale,pcy);
-    X.moveTo(pcx,pcy-(mobileBg ? 18 : 24)*pScale);X.lineTo(pcx,pcy+(mobileBg ? 18 : 24)*pScale);
+    X.moveTo(pcx-24*pScale,pcy);X.lineTo(pcx+24*pScale,pcy);
+    X.moveTo(pcx,pcy-24*pScale);X.lineTo(pcx,pcy+24*pScale);
     X.stroke();
 
-    for(let i=0;i<(mobileBg ? 12 : 18);i++){
-      const a=(i/(mobileBg ? 12 : 18))*Math.PI*2 + t*0.4;
-      const d=((mobileBg ? 18 : 26) + (i%3)*(mobileBg ? 8 : 12) + Math.sin(t*2+i)*3)*pScale;
-      X.globalAlpha=mobileBg ? 0.18 : 0.28;
+    // Spark particles near the source
+    for(let i=0;i<18;i++){
+      const a=(i/18)*Math.PI*2 + t*0.4;
+      const d=(26 + (i%3)*12 + Math.sin(t*2+i)*3)*pScale;
+      X.globalAlpha=0.28;
       X.fillStyle=i%2===0?'#9bf6ff':'#c8b6ff';
-      X.beginPath();X.arc(pcx+Math.cos(a)*d,pcy+Math.sin(a)*d,(mobileBg ? 1.1 : 1.6),0,Math.PI*2);X.fill();
+      X.beginPath();X.arc(pcx+Math.cos(a)*d,pcy+Math.sin(a)*d,1.6,0,Math.PI*2);X.fill();
     }
     X.globalAlpha=1;
   }
   else if(bg.type==='saturnrings'){
     X.fillStyle='#06050c';X.fillRect(-10,-10,W+20,H+20);
 
-    const mobileBg = isPortraitPhoneCanvas();
+    // Decorative Saturn, randomized every run but still kept near the edges
     const decor = getBackgroundDecor('saturn');
-    const side = decor.side || ((decor.x ?? W*0.90) < W/2 ? 'left' : 'right');
-    const planetR = (decor.planetR ?? 62) * (mobileBg ? 0.88 : 1);
-    const scx = mobileBg
-      ? (side === 'left' ? -planetR*0.34 : W + planetR*0.34)
-      : (decor.x ?? W*0.90);
-    const scy = mobileBg ? Math.min(decor.y ?? H*0.22, H*0.24) : (decor.y ?? H*0.34);
+    const scx = decor.x ?? W*0.90;
+    const scy = decor.y ?? H*0.34;
+    const planetR = decor.planetR ?? 62;
     const ringTilt = (decor.ringTilt ?? -0.28) + Math.sin(t*0.18)*0.028;
     const ringSpin=t*0.65;
-    const hazeR = (decor.hazeR ?? 178) * (mobileBg ? 0.78 : 1);
+    const hazeR = decor.hazeR ?? 178;
 
+    // Softer warm haze, tighter to the planet
     const sg=X.createRadialGradient(scx,scy,0,scx,scy,hazeR);
-    sg.addColorStop(0, mobileBg ? 'rgba(255,215,150,0.07)' : 'rgba(255,215,150,0.10)');
-    sg.addColorStop(0.34, mobileBg ? 'rgba(180,120,80,0.04)' : 'rgba(180,120,80,0.06)');
+    sg.addColorStop(0,'rgba(255,215,150,0.10)');
+    sg.addColorStop(0.34,'rgba(180,120,80,0.06)');
     sg.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=sg;X.fillRect(-10,-10,W+20,H+20);
 
-    X.globalAlpha=mobileBg ? 0.025 : 0.05;
+    // Very subtle distant bands crossing the screen
+    X.globalAlpha=0.05;
     X.strokeStyle='rgba(170,200,255,0.22)';
-    X.lineWidth=mobileBg ? 1.1 : 1.5;
+    X.lineWidth=1.5;
     for(let i=0;i<5;i++){
       X.beginPath();
       X.moveTo(W*0.18, H*(0.24+i*0.09));
@@ -426,43 +400,47 @@ else if(bg.type==='pulsar'){
     }
     X.globalAlpha=1;
 
+    // Rings behind with toned-down variation
     for(let i=0;i<7;i++){
-      X.globalAlpha=(mobileBg ? 0.09 : 0.14)-i*(mobileBg ? 0.009 : 0.012);
+      X.globalAlpha=0.14-i*0.012;
       X.strokeStyle=i%3===0?'rgba(245,214,156,0.54)':(i%3===1?'rgba(175,205,255,0.26)':'rgba(214,168,120,0.30)');
-      X.lineWidth=(mobileBg ? 4.1 : 5.5)-i*0.42;
+      X.lineWidth=5.5-i*0.42;
       X.beginPath();
-      X.ellipse(scx,scy,planetR+(mobileBg ? 20 : 28)+i*(mobileBg ? 8.5 : 12),(planetR*0.35)+i*(mobileBg ? 3.2 : 4.2),ringTilt,0,Math.PI*2);
+      X.ellipse(scx,scy,planetR+28+i*12,(planetR*0.35)+i*4.2,ringTilt,0,Math.PI*2);
       X.stroke();
     }
 
-    for(let i=0;i<(mobileBg ? 44 : 72);i++){
-      const orbitA=ringSpin + (i/(mobileBg ? 44 : 72))*Math.PI*2;
-      const rr=(planetR+(mobileBg ? 20 : 26)) + (i%10)*(mobileBg ? 6 : 9);
+    // Ring dust speckles moving around the rings to sell rotation
+    for(let i=0;i<72;i++){
+      const orbitA=ringSpin + (i/72)*Math.PI*2;
+      const rr=(planetR+26) + (i%10)*9;
       const ex=(rr + Math.sin(t*1.7+i)*2.0);
-      const ey=((mobileBg ? 16 : 21) + (i%7)*(mobileBg ? 1.8 : 2.6));
+      const ey=(21 + (i%7)*2.6);
       const cosA=Math.cos(orbitA), sinA=Math.sin(orbitA);
       const px=scx + cosA*ex*Math.cos(ringTilt) - sinA*ey*Math.sin(ringTilt);
       const py=scy + cosA*ex*Math.sin(ringTilt) + sinA*ey*Math.cos(ringTilt);
-      X.globalAlpha=(mobileBg ? 0.020 : 0.035) + (i%5)*0.010;
+      X.globalAlpha=0.035 + (i%5)*0.012;
       X.fillStyle=i%2===0?'rgba(255,232,186,0.80)':'rgba(170,210,255,0.72)';
-      X.beginPath();X.arc(px,py,(mobileBg ? 0.78 : 0.95) + (i%3)*0.12,0,Math.PI*2);X.fill();
+      X.beginPath();X.arc(px,py,0.95 + (i%3)*0.14,0,Math.PI*2);X.fill();
     }
 
+    // Rotating bright clumps on the ring front, but more discreet
     for(let i=0;i<3;i++){
       const a=ringSpin*0.9 + i*Math.PI*2/3;
-      const ex=planetR+(mobileBg ? 42 : 58), ey=planetR*(mobileBg ? 0.45 : 0.53);
+      const ex=planetR+58, ey=planetR*0.53;
       const cosA=Math.cos(a), sinA=Math.sin(a);
       const px=scx + cosA*ex*Math.cos(ringTilt) - sinA*ey*Math.sin(ringTilt);
       const py=scy + cosA*ex*Math.sin(ringTilt) + sinA*ey*Math.cos(ringTilt);
-      X.globalAlpha=(mobileBg ? 0.07 : 0.11) + 0.04*Math.sin(t*2+i);
-      X.shadowColor='rgba(255,240,190,0.50)';X.shadowBlur=mobileBg ? 4 : 7;
+      X.globalAlpha=0.11 + 0.04*Math.sin(t*2+i);
+      X.shadowColor='rgba(255,240,190,0.50)';X.shadowBlur=7;
       X.fillStyle='rgba(255,240,190,0.72)';
-      X.beginPath();X.arc(px,py,mobileBg ? 2.0 : 2.6,0,Math.PI*2);X.fill();
+      X.beginPath();X.arc(px,py,2.6,0,Math.PI*2);X.fill();
       X.shadowBlur=0;
     }
 
+    // Planet body, smaller and pushed out of the play corridor
     X.globalAlpha=1;
-    X.shadowColor='rgba(255,198,126,0.24)';X.shadowBlur=mobileBg ? 12 : 18;
+    X.shadowColor='rgba(255,198,126,0.24)';X.shadowBlur=18;
     const sb=X.createRadialGradient(scx-10,scy-14,0,scx,scy,planetR+6);
     sb.addColorStop(0,'#fff7d4');
     sb.addColorStop(0.16,'#ffd78a');
@@ -473,182 +451,179 @@ else if(bg.type==='pulsar'){
     X.beginPath();X.arc(scx,scy,planetR,0,Math.PI*2);X.fill();
     X.shadowBlur=0;
 
+    // Planet bands
     X.save();
     X.beginPath();X.arc(scx,scy,planetR,0,Math.PI*2);X.clip();
     for(let i=0;i<5;i++){
-      X.globalAlpha=(mobileBg ? 0.05 : 0.08) + i*0.010;
+      X.globalAlpha=0.08 + i*0.012;
       X.fillStyle=i%2===0?'rgba(90,45,18,0.42)':'rgba(255,220,170,0.16)';
-      X.fillRect(scx-(planetR+20), scy-(planetR*0.75) + i*(planetR*0.30) + Math.sin(t*0.7+i)*2.2, (planetR+20)*2, (mobileBg ? 7 : 9) + i*1.6);
+      X.fillRect(scx-(planetR+20), scy-(planetR*0.75) + i*(planetR*0.30) + Math.sin(t*0.7+i)*2.2, (planetR+20)*2, 9 + i*1.6);
     }
     X.restore();
 
-    X.globalAlpha=mobileBg ? 0.18 : 0.30;
+    // Ring front cut/highlight with slow drift, less contrast near gameplay area
+    X.globalAlpha=0.30;
     X.strokeStyle='rgba(255,236,190,0.68)';
-    X.lineWidth=mobileBg ? 2.8 : 4;
+    X.lineWidth=4;
     X.beginPath();
-    X.ellipse(scx,scy,planetR+(mobileBg ? 48 : 66),planetR*(mobileBg ? 0.48 : 0.56),ringTilt,0.10*Math.PI + 0.08*Math.sin(t*0.35),0.88*Math.PI + 0.06*Math.sin(t*0.35));
+    X.ellipse(scx,scy,planetR+66,planetR*0.56,ringTilt,0.10*Math.PI + 0.08*Math.sin(t*0.35),0.88*Math.PI + 0.06*Math.sin(t*0.35));
     X.stroke();
-    X.globalAlpha=mobileBg ? 0.06 : 0.10;
+    X.globalAlpha=0.10;
     X.strokeStyle='rgba(130,170,255,0.50)';
-    X.lineWidth=mobileBg ? 5 : 8;
+    X.lineWidth=8;
     X.beginPath();
-    X.ellipse(scx,scy,planetR+(mobileBg ? 60 : 80),planetR*(mobileBg ? 0.58 : 0.68),ringTilt,0.06*Math.PI + 0.06*Math.sin(t*0.32),0.92*Math.PI + 0.05*Math.sin(t*0.32));
+    X.ellipse(scx,scy,planetR+80,planetR*0.68,ringTilt,0.06*Math.PI + 0.06*Math.sin(t*0.32),0.92*Math.PI + 0.05*Math.sin(t*0.32));
     X.stroke();
     X.globalAlpha=1;
 
-    if(!mobileBg){
-      const moonOffsets = [
-        [-planetR*2.9, -planetR*1.8, 4.5],
-        [-planetR*3.2,  planetR*2.2, 3.0],
-        [ planetR*1.7,  planetR*3.1, 2.5],
-        [ planetR*2.2, -planetR*2.7, 2.8],
-      ];
-      for(let i=0;i<moonOffsets.length;i++){
-        const m=moonOffsets[i];
-        const mx=scx+m[0], my=scy+m[1];
-        X.globalAlpha=0.18;
-        X.strokeStyle='rgba(190,200,255,0.24)';
-        X.lineWidth=1;
-        X.beginPath();X.arc(mx,my,9+i*2,0,Math.PI*2);X.stroke();
-        X.globalAlpha=0.40;
-        X.fillStyle='rgba(230,230,255,0.65)';
-        X.beginPath();X.arc(mx,my,m[2],0,Math.PI*2);X.fill();
-      }
-      X.globalAlpha=1;
+    // Tiny moons with faint orbits, relative to Saturn so they move with each randomized layout
+    const moonOffsets = [
+      [-planetR*2.9, -planetR*1.8, 4.5],
+      [-planetR*3.2,  planetR*2.2, 3.0],
+      [ planetR*1.7,  planetR*3.1, 2.5],
+      [ planetR*2.2, -planetR*2.7, 2.8],
+    ];
+    for(let i=0;i<moonOffsets.length;i++){
+      const m=moonOffsets[i];
+      const mx=scx+m[0], my=scy+m[1];
+      X.globalAlpha=0.18;
+      X.strokeStyle='rgba(190,200,255,0.24)';
+      X.lineWidth=1;
+      X.beginPath();X.arc(mx,my,9+i*2,0,Math.PI*2);X.stroke();
+      X.globalAlpha=0.40;
+      X.fillStyle='rgba(230,230,255,0.65)';
+      X.beginPath();X.arc(mx,my,m[2],0,Math.PI*2);X.fill();
     }
+    X.globalAlpha=1;
   }
 
   else if(bg.type==='astralcathedral'){
     X.fillStyle='#050713';X.fillRect(-10,-10,W+20,H+20);
 
-    const mobileBg = isPortraitPhoneCanvas();
-    const glowReach = mobileBg ? W*0.26 : W*0.42;
-    const leftGlowX = mobileBg ? W*0.03 : W*0.10;
-    const rightGlowX = mobileBg ? W*0.97 : W*0.90;
-    const pillarSides = mobileBg ? [0.06, 0.94] : [0.12, 0.88];
-    const pillarAlpha = mobileBg ? 0.18 : 0.34;
-
-    const lg=X.createRadialGradient(leftGlowX,H*0.52,0,leftGlowX,H*0.52,glowReach);
-    lg.addColorStop(0, mobileBg ? 'rgba(90,140,255,0.08)' : 'rgba(90,140,255,0.16)');
+    // Deep side glows
+    const lg=X.createRadialGradient(W*0.10,H*0.52,0,W*0.10,H*0.52,W*0.42);
+    lg.addColorStop(0,'rgba(90,140,255,0.16)');
     lg.addColorStop(1,'rgba(90,140,255,0)');
     X.fillStyle=lg;X.fillRect(-10,-10,W+20,H+20);
 
-    const rg=X.createRadialGradient(rightGlowX,H*0.52,0,rightGlowX,H*0.52,glowReach);
-    rg.addColorStop(0, mobileBg ? 'rgba(180,90,255,0.08)' : 'rgba(180,90,255,0.16)');
+    const rg=X.createRadialGradient(W*0.90,H*0.52,0,W*0.90,H*0.52,W*0.42);
+    rg.addColorStop(0,'rgba(180,90,255,0.16)');
     rg.addColorStop(1,'rgba(180,90,255,0)');
     X.fillStyle=rg;X.fillRect(-10,-10,W+20,H+20);
 
-    X.globalAlpha=pillarAlpha;
-    for(const side of pillarSides){
+    // Cathedral pillars / arches at the edges
+    X.globalAlpha=0.34;
+    for(const side of [0.12,0.88]){
       const cx=W*side;
       X.strokeStyle=side<0.5?'rgba(120,180,255,0.38)':'rgba(210,120,255,0.38)';
-      X.lineWidth=mobileBg ? 2 : 3;
+      X.lineWidth=3;
       X.beginPath();
-      X.moveTo(cx,H*(mobileBg ? 0.24 : 0.18));
-      X.lineTo(cx,H*(mobileBg ? 0.86 : 0.88));
+      X.moveTo(cx,H*0.18);
+      X.lineTo(cx,H*0.88);
       X.stroke();
 
-      X.lineWidth=mobileBg ? 1.4 : 2;
+      X.lineWidth=2;
       X.beginPath();
-      X.arc(cx,H*(mobileBg ? 0.22 : 0.18),mobileBg ? 36 : 56,Math.PI,0);
+      X.arc(cx,H*0.18,56,Math.PI,0);
       X.stroke();
 
-      X.globalAlpha=mobileBg ? 0.08 : 0.18;
+      X.globalAlpha=0.18;
       X.beginPath();
-      X.arc(cx,H*(mobileBg ? 0.22 : 0.18),mobileBg ? 54 : 88,Math.PI,0);
+      X.arc(cx,H*0.18,88,Math.PI,0);
       X.stroke();
-      X.globalAlpha=pillarAlpha;
+      X.globalAlpha=0.34;
     }
 
+    // Floating stained-glass shards near the borders
     for(let i=0;i<10;i++){
-      const side=i<5?(mobileBg ? 0.10 : 0.18):(mobileBg ? 0.90 : 0.82);
+      const side=i<5?0.18:0.82;
       const dir=i<5?-1:1;
-      const px=W*side + Math.sin(t*0.6+i)*(mobileBg ? 12 : 22);
-      const py=H*((mobileBg ? 0.24 : 0.18) + (i%5)*(mobileBg ? 0.12 : 0.15)) + Math.cos(t*0.5+i)*(mobileBg ? 6 : 9);
-      X.fillStyle=i%2===0
-        ? (mobileBg ? 'rgba(140,220,255,0.12)' : 'rgba(140,220,255,0.22)')
-        : (mobileBg ? 'rgba(220,140,255,0.12)' : 'rgba(220,140,255,0.22)');
+      const px=W*side + Math.sin(t*0.6+i)*22;
+      const py=H*(0.18 + (i%5)*0.15) + Math.cos(t*0.5+i)*9;
+      X.fillStyle=i%2===0?'rgba(140,220,255,0.22)':'rgba(220,140,255,0.22)';
       X.beginPath();
-      X.moveTo(px,py-(mobileBg ? 8 : 12));
-      X.lineTo(px+(mobileBg ? 5 : 8)*dir,py);
-      X.lineTo(px,py+(mobileBg ? 8 : 12));
-      X.lineTo(px-(mobileBg ? 3 : 5)*dir,py);
+      X.moveTo(px,py-12);
+      X.lineTo(px+8*dir,py);
+      X.lineTo(px,py+12);
+      X.lineTo(px-5*dir,py);
       X.closePath();
       X.fill();
     }
 
-    const cg=X.createRadialGradient(W/2,H*0.78,0,W/2,H*0.78,W*(mobileBg ? 0.24 : 0.32));
-    cg.addColorStop(0, mobileBg ? 'rgba(255,240,190,0.07)' : 'rgba(255,240,190,0.12)');
+    // Safe center glow that does not cover the aim corridor
+    const cg=X.createRadialGradient(W/2,H*0.78,0,W/2,H*0.78,W*0.32);
+    cg.addColorStop(0,'rgba(255,240,190,0.12)');
     cg.addColorStop(1,'rgba(255,240,190,0)');
     X.fillStyle=cg;X.fillRect(-10,-10,W+20,H+20);
 
+    // Fine star field
     X.globalAlpha=1;
     for(let i=0;i<16;i++){
       const sx=(i*83)%W;
       const sy=(i*137)%H;
-      X.globalAlpha=(mobileBg ? 0.12 : 0.20)+(mobileBg ? 0.12 : 0.20)*Math.sin(t*1.8+i);
+      X.globalAlpha=0.20+0.20*Math.sin(t*1.8+i);
       X.fillStyle='#ffffff';
-      X.beginPath();X.arc(sx,sy,mobileBg ? 0.9 : 1.2,0,Math.PI*2);X.fill();
+      X.beginPath();X.arc(sx,sy,1.2,0,Math.PI*2);X.fill();
     }
     X.globalAlpha=1;
   }
   else if(bg.type==='andromedathrone'){
     X.fillStyle='#04040f';X.fillRect(-10,-10,W+20,H+20);
 
-    const mobileBg = isPortraitPhoneCanvas();
-    const gcx=mobileBg ? W*0.88 : W*0.78;
-    const gcy=mobileBg ? H*0.16 : H*0.26;
-    const galaxyScale = mobileBg ? 0.72 : 1;
-
+    // Large distant galaxy in the upper-right, away from the center lane
+    const gcx=W*0.78, gcy=H*0.26;
     for(let arm=0;arm<4;arm++){
       const armBase=t*0.04+arm*Math.PI/2;
       for(let j=0;j<54;j++){
-        const d=j*5.2*galaxyScale;
+        const d=j*5.2;
         const a=armBase+j*0.17;
-        X.globalAlpha=(mobileBg ? 0.16 : 0.26)-j*(mobileBg ? 0.0024 : 0.0035);
+        X.globalAlpha=0.26-j*0.0035;
         X.fillStyle=j<18?'#ffe8ff':(j<36?'#c084fc':'#60a5fa');
         X.beginPath();
-        X.arc(gcx+Math.cos(a)*d,gcy+Math.sin(a)*d*0.52,(mobileBg ? 1.8 : 2.4)-j*(mobileBg ? 0.014 : 0.02),0,Math.PI*2);
+        X.arc(gcx+Math.cos(a)*d,gcy+Math.sin(a)*d*0.52,2.4-j*0.02,0,Math.PI*2);
         X.fill();
       }
     }
-    const gg=X.createRadialGradient(gcx,gcy,0,gcx,gcy,120*galaxyScale);
-    gg.addColorStop(0, mobileBg ? 'rgba(255,235,255,0.14)' : 'rgba(255,235,255,0.22)');
+    const gg=X.createRadialGradient(gcx,gcy,0,gcx,gcy,120);
+    gg.addColorStop(0,'rgba(255,235,255,0.22)');
     gg.addColorStop(1,'rgba(255,235,255,0)');
     X.globalAlpha=1;
     X.fillStyle=gg;X.fillRect(-10,-10,W+20,H+20);
 
-    X.globalAlpha=mobileBg ? 0.10 : 0.22;
+    // Throne silhouette low center/right
+    X.globalAlpha=0.22;
     X.fillStyle='rgba(170,120,255,0.20)';
     X.beginPath();
-    X.moveTo(W*(mobileBg ? 0.72 : 0.60),H*(mobileBg ? 0.90 : 0.86));
-    X.lineTo(W*(mobileBg ? 0.78 : 0.66),H*(mobileBg ? 0.78 : 0.70));
-    X.lineTo(W*(mobileBg ? 0.84 : 0.72),H*(mobileBg ? 0.78 : 0.70));
-    X.lineTo(W*(mobileBg ? 0.90 : 0.78),H*(mobileBg ? 0.90 : 0.86));
+    X.moveTo(W*0.60,H*0.86);
+    X.lineTo(W*0.66,H*0.70);
+    X.lineTo(W*0.72,H*0.70);
+    X.lineTo(W*0.78,H*0.86);
     X.closePath();
     X.fill();
 
     X.fillStyle='rgba(120,180,255,0.14)';
     X.beginPath();
-    X.moveTo(W*(mobileBg ? 0.76 : 0.63),H*(mobileBg ? 0.78 : 0.70));
-    X.lineTo(W*(mobileBg ? 0.81 : 0.67),H*(mobileBg ? 0.68 : 0.58));
-    X.lineTo(W*(mobileBg ? 0.86 : 0.71),H*(mobileBg ? 0.78 : 0.70));
+    X.moveTo(W*0.63,H*0.70);
+    X.lineTo(W*0.67,H*0.58);
+    X.lineTo(W*0.71,H*0.70);
     X.closePath();
     X.fill();
 
+    // Royal energy curtains
     for(let i=0;i<6;i++){
       const x=W*(0.08+i*0.16);
       const cg2=X.createLinearGradient(x,0,x,H);
       cg2.addColorStop(0,'rgba(0,0,0,0)');
-      cg2.addColorStop(0.45, mobileBg ? 'rgba(80,120,255,0.025)' : 'rgba(80,120,255,0.05)');
-      cg2.addColorStop(0.55, mobileBg ? 'rgba(200,100,255,0.035)' : 'rgba(200,100,255,0.07)');
+      cg2.addColorStop(0.45,'rgba(80,120,255,0.05)');
+      cg2.addColorStop(0.55,'rgba(200,100,255,0.07)');
       cg2.addColorStop(1,'rgba(0,0,0,0)');
       X.fillStyle=cg2;
-      X.fillRect(x-(mobileBg ? 12 : 20),0,mobileBg ? 24 : 40,H);
+      X.fillRect(x-20,0,40,H);
     }
 
-    X.globalAlpha=mobileBg ? 0.22 : 0.35;
-    const pts=[[W*0.12,H*0.20],[W*0.17,H*0.15],[W*0.23,H*0.21],[W*0.27,H*0.17],[W*0.32,H*0.24]];
+    // Constellation nodes
+    X.globalAlpha=0.35;
+    const pts=[[W*0.16,H*0.24],[W*0.21,H*0.18],[W*0.27,H*0.25],[W*0.31,H*0.20],[W*0.36,H*0.28]];
     X.strokeStyle='rgba(180,210,255,0.18)';
     X.lineWidth=1;
     X.beginPath();
@@ -656,68 +631,68 @@ else if(bg.type==='pulsar'){
     X.stroke();
     for(const p of pts){
       X.fillStyle='rgba(255,255,255,0.45)';
-      X.beginPath();X.arc(p[0],p[1],mobileBg ? 1.5 : 2,0,Math.PI*2);X.fill();
+      X.beginPath();X.arc(p[0],p[1],2,0,Math.PI*2);X.fill();
     }
     X.globalAlpha=1;
   }
   else if(bg.type==='cosmicgenesis'){
     X.fillStyle='#01030a';X.fillRect(-10,-10,W+20,H+20);
 
-    const mobileBg = isPortraitPhoneCanvas();
-    const rcx=mobileBg ? W*1.01 : W*0.74;
-    const rcy=mobileBg ? H*0.18 : H*0.32;
-    const riftScale = mobileBg ? 0.72 : 1;
-
-    const rg1=X.createRadialGradient(rcx,rcy,0,rcx,rcy,150*riftScale);
-    rg1.addColorStop(0, mobileBg ? 'rgba(255,245,210,0.18)' : 'rgba(255,245,210,0.28)');
-    rg1.addColorStop(0.18, mobileBg ? 'rgba(255,190,90,0.12)' : 'rgba(255,190,90,0.20)');
-    rg1.addColorStop(0.38, mobileBg ? 'rgba(80,220,255,0.10)' : 'rgba(80,220,255,0.16)');
+    // Creation rift
+    const rcx=W*0.74, rcy=H*0.32;
+    const rg1=X.createRadialGradient(rcx,rcy,0,rcx,rcy,150);
+    rg1.addColorStop(0,'rgba(255,245,210,0.28)');
+    rg1.addColorStop(0.18,'rgba(255,190,90,0.20)');
+    rg1.addColorStop(0.38,'rgba(80,220,255,0.16)');
     rg1.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=rg1;X.fillRect(-10,-10,W+20,H+20);
 
+    // Nested rings
     for(let i=0;i<3;i++){
-      X.globalAlpha=(mobileBg ? 0.13 : 0.22)-i*(mobileBg ? 0.032 : 0.05);
+      X.globalAlpha=0.22-i*0.05;
       X.strokeStyle=i===0?'rgba(255,220,120,0.55)':(i===1?'rgba(90,220,255,0.40)':'rgba(170,120,255,0.32)');
-      X.lineWidth=(mobileBg ? 1.5 : 2.2)-i*0.3;
+      X.lineWidth=2.2-i*0.4;
       X.beginPath();
-      X.ellipse(rcx,rcy,(96+i*26)*riftScale,(58+i*16)*riftScale,t*0.10+i*0.6,0,Math.PI*2);
+      X.ellipse(rcx,rcy,96+i*26,58+i*16,t*0.10+i*0.6,0,Math.PI*2);
       X.stroke();
     }
 
-    for(let i=0;i<(mobileBg ? 4 : 7);i++){
+    // Cosmic filaments sweeping from the corners
+    for(let i=0;i<7;i++){
       const phase=t*0.18+i*0.7;
-      X.globalAlpha=mobileBg ? 0.055 : 0.12;
+      X.globalAlpha=0.12;
       X.strokeStyle=i%2===0?'rgba(90,220,255,0.55)':'rgba(255,200,120,0.48)';
-      X.lineWidth=mobileBg ? 1.1 : 1.8;
+      X.lineWidth=1.8;
       X.beginPath();
-      X.moveTo(-40,H*(0.16+i*0.12));
-      X.bezierCurveTo(W*0.16,H*(0.10+i*0.04),W*0.38,H*(0.26+i*0.03),rcx+Math.sin(phase)*12,rcy+Math.cos(phase)*10);
+      X.moveTo(-40,H*(0.12+i*0.10));
+      X.bezierCurveTo(W*0.20,H*(0.06+i*0.04),W*0.46,H*(0.34+i*0.03),rcx+Math.sin(phase)*18,rcy+Math.cos(phase)*14);
       X.stroke();
 
       X.beginPath();
-      X.moveTo(W+40,H*(0.76-i*0.07));
-      X.bezierCurveTo(W*0.84,H*(0.74-i*0.04),W*0.62,H*(0.48-i*0.02),rcx+Math.cos(phase)*12,rcy+Math.sin(phase)*12);
+      X.moveTo(W+40,H*(0.84-i*0.08));
+      X.bezierCurveTo(W*0.78,H*(0.88-i*0.04),W*0.52,H*(0.58-i*0.02),rcx+Math.cos(phase)*14,rcy+Math.sin(phase)*18);
       X.stroke();
     }
 
-    for(let i=0;i<(mobileBg ? 14 : 22);i++){
+    // Tiny creation sparks
+    for(let i=0;i<22;i++){
       const a=t*0.35+i*0.55;
-      const d=(mobileBg ? 28 : 40)+(i%6)*(mobileBg ? 11 : 18);
-      X.globalAlpha=mobileBg ? 0.18 : 0.28;
+      const d=40+(i%6)*18;
+      X.globalAlpha=0.28;
       X.fillStyle=i%3===0?'#fff6cf':(i%3===1?'#80ffff':'#d8b4fe');
       X.beginPath();
-      X.arc(rcx+Math.cos(a)*d,rcy+Math.sin(a)*d*0.65,mobileBg ? 1.2 : 1.6,0,Math.PI*2);
+      X.arc(rcx+Math.cos(a)*d,rcy+Math.sin(a)*d*0.65,1.6,0,Math.PI*2);
       X.fill();
     }
 
-    const pcx=mobileBg ? -W*0.04 : W*0.18;
-    const pcy=mobileBg ? H*0.86 : H*0.78;
+    // Subtle lower-left proto-galaxy
+    const pcx=W*0.18,pcy=H*0.78;
     for(let i=0;i<18;i++){
       const a=t*0.03+i*0.32;
-      const d=i*(mobileBg ? 2.6 : 3.2);
-      X.globalAlpha=(mobileBg ? 0.08 : 0.18)-i*(mobileBg ? 0.003 : 0.006);
+      const d=i*3.2;
+      X.globalAlpha=0.18-i*0.006;
       X.fillStyle=i<8?'#fff':'#6ee7ff';
-      X.beginPath();X.arc(pcx+Math.cos(a)*d,pcy+Math.sin(a)*d*0.55,mobileBg ? 1.3 : 1.8,0,Math.PI*2);X.fill();
+      X.beginPath();X.arc(pcx+Math.cos(a)*d,pcy+Math.sin(a)*d*0.55,1.8,0,Math.PI*2);X.fill();
     }
     X.globalAlpha=1;
   }
@@ -1047,10 +1022,10 @@ function draw(){
     X.translate(W/2,H/2);X.scale(1/z,1/z);X.translate(-W/2,-H/2);
   }
 
-  if(state===ST.PLAY){drawPlayUI();drawPauseBtn();drawMuteBtn();}
-  else if(state===ST.MENU){drawMenuUI();drawMuteBtn();}
-  else if(state===ST.DEAD){drawDeadUI();drawMuteBtn();}
-  else if(state===ST.PAUSE){drawPlayUI();drawPauseScreen();drawMuteBtn();}
+  if(state===ST.PLAY){drawPlayUI();drawPauseBtn();}
+  else if(state===ST.MENU){drawMenuUI();}
+  else if(state===ST.DEAD){drawDeadUI();}
+  else if(state===ST.PAUSE){drawPlayUI();drawPauseScreen();}
 
   X.restore();
   return true;
@@ -1755,59 +1730,6 @@ function drawMedal(x,y,medal,scale){
   X.fillText(medal.icon,0,2);
 
   X.restore();
-}
-
-function drawMuteBtn(){
-  const s=MUTE_BTN.size, m=MUTE_BTN.margin;
-  const bx=W-m-PAUSE_BTN.size-8-s, by=m;
-
-  // Background circle
-  X.globalAlpha=0.3;
-  X.fillStyle='#000';
-  X.beginPath();X.arc(bx+s/2,by+s/2,s/2,0,Math.PI*2);X.fill();
-  X.globalAlpha=0.4;
-  X.strokeStyle='#ffffff';
-  X.lineWidth=1.5;
-  X.beginPath();X.arc(bx+s/2,by+s/2,s/2,0,Math.PI*2);X.stroke();
-
-  // Speaker icon
-  X.globalAlpha=0.85;
-  X.fillStyle='#ffffff';
-  X.strokeStyle='#ffffff';
-  X.lineWidth=2;
-  X.lineCap='round';
-  const cx=bx+s/2, cy=by+s/2;
-
-  // Speaker body
-  X.beginPath();
-  X.moveTo(cx-7,cy-3);
-  X.lineTo(cx-2,cy-3);
-  X.lineTo(cx+3,cy-7);
-  X.lineTo(cx+3,cy+7);
-  X.lineTo(cx-2,cy+3);
-  X.lineTo(cx-7,cy+3);
-  X.closePath();
-  X.fill();
-
-  if(muted){
-    // X mark
-    X.strokeStyle='#ff6b6b';
-    X.beginPath();
-    X.moveTo(cx+6,cy-5);
-    X.lineTo(cx+12,cy+5);
-    X.moveTo(cx+12,cy-5);
-    X.lineTo(cx+6,cy+5);
-    X.stroke();
-  } else {
-    // Sound waves
-    X.beginPath();
-    X.arc(cx+3,cy,5,-Math.PI/4,Math.PI/4);
-    X.stroke();
-    X.beginPath();
-    X.arc(cx+3,cy,9,-Math.PI/4,Math.PI/4);
-    X.stroke();
-  }
-  X.globalAlpha=1;
 }
 
 function drawPauseBtn(){

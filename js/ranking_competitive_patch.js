@@ -143,17 +143,6 @@
 
     drawBackBtn();
 
-    const loX=W-85, loY=H*0.04, loW=72, loH=28;
-    X.globalAlpha=0.7;
-    X.fillStyle='rgba(0,0,0,0.6)';
-    roundRect(loX,loY,loW,loH,8); X.fill();
-    X.strokeStyle='#ff6b6b'; X.lineWidth=1;
-    roundRect(loX,loY,loW,loH,8); X.stroke();
-    X.fillStyle='#ff6b6b';
-    X.font='bold 10px -apple-system, system-ui, sans-serif';
-    X.fillText('SAIR',loX+loW/2,loY+loH/2);
-    X.globalAlpha=1;
-    menuBtnAreas.push({ x:loX,y:loY,w:loW,h:loH, action:()=>{ signOut(); menuScreen='main'; } });
 
     const rbx=W/2-44, rby=H*0.115, rbw=88, rbh=26;
     X.globalAlpha=0.84;

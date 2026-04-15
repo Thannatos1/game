@@ -22,7 +22,7 @@
       case 'ranking':
         return { subtitle:'Posição atual, rival imediato e metas', hint:'Jogue mais uma para subir.', accent:'#ff6b9d', width:null, stageY:mobile?0.145:0.13, chipY:0.0, chipW:0, footerW:0, hideChip:true, hideFooter:true };
       case 'career':
-        return { subtitle:'XP, títulos e metas de longo prazo', hint:'Progressão sem afetar a justiça competitiva.', accent:'#ffd32a', width:440, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?245:320, footerW:320 };
+        return { subtitle:'XP, títulos e metas de longo prazo', hint:'Progressão sem afetar a justiça competitiva.', accent:'#ffd32a', width:440, stageY:mobile?0.145:0.11, chipY:mobile?0.114:0.092, chipW:mobile?245:320, footerW:320 };
       case 'login':
         return { subtitle:'Entre para salvar e disputar o ranking', hint:'Sua conta sincroniza nickname e recorde.', accent:'#00f5d4', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:320 };
       case 'nickname':

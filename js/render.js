@@ -2260,7 +2260,7 @@ function drawMainMenu(){
       X.fillStyle='rgba(255,255,255,0.4)';
       X.font='14px -apple-system, system-ui, sans-serif';
       X.textAlign='center';X.textBaseline='middle';
-      X.fillText('RECORDE: '+best,W/2,H*0.93);
+      X.fillText('RECORDE: '+best,W/2,((W <= 560 && H >= W * 1.25) ? H*0.885 : H*0.93));
     }
     return;
   }
@@ -2311,7 +2311,7 @@ function drawMainMenu(){
     X.fillStyle='rgba(255,255,255,0.4)';
     X.font='14px -apple-system, system-ui, sans-serif';
     X.textAlign='center';X.textBaseline='middle';
-    X.fillText('RECORDE: '+best,W/2,H*0.92);
+    X.fillText('RECORDE: '+best,W/2,((W <= 560 && H >= W * 1.25) ? H*0.885 : H*0.92));
   }
 }
 

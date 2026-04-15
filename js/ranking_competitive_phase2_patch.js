@@ -382,6 +382,8 @@
     }
 
     y += 4;
+    X.textAlign='left';
+    X.textBaseline='middle';
     X.fillStyle='#00f5d4';
     X.font='bold 12px -apple-system, system-ui, sans-serif';
     X.fillText(getDisplayTitle(), sx, y);

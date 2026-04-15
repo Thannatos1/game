@@ -83,8 +83,8 @@
     return true;
   }
 
-  const _origGetCaptureR = typeof getCaptureR === 'function' ? getCaptureR : null;
-  getCaptureR = function(tier){
+  function fairnessAdjustCaptureRadius(payload){
+    const tier = payload && payload.tier;
     const base = {easy:64, medium:54, hard:44, gold:40};
     const floor = {easy:38, medium:36, hard:34, gold:32};
     let r = base[tier] || 52;
@@ -97,30 +97,37 @@
     if (!zenMode && phase >= 5 && (tier === 'hard' || tier === 'gold')) r += 2;
 
     const shrink = zenMode ? 0 : Math.min(score * 0.10, 8);
-    return Math.max(r - shrink, floor[tier] || 34);
-  };
+    payload.value = Math.max(r - shrink, floor[tier] || 34);
+    return payload;
+  }
 
-  const _origGetOrbitSpeed = typeof getOrbitSpeed === 'function' ? getOrbitSpeed : null;
-  getOrbitSpeed = function(){
-    if (zenMode) return 2.2;
-    return Math.min(3.0 + score * 0.042, 6.8);
-  };
+  function fairnessAdjustOrbitSpeed(payload){
+    payload.value = zenMode ? 2.2 : Math.min(3.0 + score * 0.042, 6.8);
+    return payload;
+  }
 
-  const _origGetGravityStrength = typeof getGravityStrength === 'function' ? getGravityStrength : null;
-  getGravityStrength = function(){
-    if (zenMode) return 30;
-    if (score < 30) return 0;
-    return Math.min((score - 30) * 1.2, 45);
-  };
+  function fairnessAdjustGravityStrength(payload){
+    if (zenMode) payload.value = 30;
+    else if (score < 30) payload.value = 0;
+    else payload.value = Math.min((score - 30) * 1.2, 45);
+    return payload;
+  }
 
-  const _origGetComboWindow = typeof getComboWindow === 'function' ? getComboWindow : null;
-  getComboWindow = function(){
+  function fairnessAdjustComboWindow(payload){
     const ev = (typeof getActiveEvent === 'function') ? getActiveEvent() : null;
-    if (ev && ev.id === 'combo_fever') return 3.2;
-    if (score < 25) return 2.8;
-    if (score < 60) return 2.65;
-    return 2.5;
-  };
+    if (ev && ev.id === 'combo_fever') payload.value = 3.2;
+    else if (score < 25) payload.value = 2.8;
+    else if (score < 60) payload.value = 2.65;
+    else payload.value = 2.5;
+    return payload;
+  }
+
+  if (typeof registerOrbitaGameplayHook === 'function') {
+    registerOrbitaGameplayHook('adjustCaptureRadius', fairnessAdjustCaptureRadius);
+    registerOrbitaGameplayHook('adjustOrbitSpeed', fairnessAdjustOrbitSpeed);
+    registerOrbitaGameplayHook('adjustGravityStrength', fairnessAdjustGravityStrength);
+    registerOrbitaGameplayHook('adjustComboWindow', fairnessAdjustComboWindow);
+  }
 
   const _origPlaceBranch = typeof placeBranch === 'function' ? placeBranch : null;
   placeBranch = function(fromNode, tier, angleOffset){

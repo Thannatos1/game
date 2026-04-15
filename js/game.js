@@ -3,6 +3,35 @@ function getPhase(){
   if(zenMode)return 1;
   if(score<10)return 1;if(score<25)return 2;if(score<40)return 3;if(score<60)return 4;if(score<100)return 5;return 6;
 }
+
+const orbitaGameplayHooks = window.__orbitaGameplayHooks || (window.__orbitaGameplayHooks = {
+  adjustCaptureRadius: [],
+  adjustOrbitSpeed: [],
+  adjustGravityStrength: [],
+  adjustComboWindow: []
+});
+
+function registerOrbitaGameplayHook(name, fn){
+  if (!orbitaGameplayHooks[name] || typeof fn !== 'function') return false;
+  if (!orbitaGameplayHooks[name].includes(fn)) {
+    orbitaGameplayHooks[name].push(fn);
+  }
+  return true;
+}
+
+function applyOrbitaGameplayHooks(name, payload){
+  if (!orbitaGameplayHooks[name]) return payload;
+  let next = payload;
+  for (const hook of orbitaGameplayHooks[name]) {
+    try {
+      const result = hook(next);
+      if (result && typeof result === 'object') next = result;
+    } catch(e) {}
+  }
+  return next;
+}
+
+window.registerOrbitaGameplayHook = registerOrbitaGameplayHook;
 function getCaptureR(tier){
   const base = {easy:62,medium:50,hard:38,gold:34};
   let r = base[tier]||50;
@@ -10,16 +39,25 @@ function getCaptureR(tier){
   const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
   if(ev && ev.id==='calm_orbit' && (tier==='easy' || tier==='medium')) r += 6;
   const shrink = zenMode?0:Math.min(score*0.15, 12);
-  return Math.max(r - shrink, 28);
+  const payload = applyOrbitaGameplayHooks('adjustCaptureRadius', {
+    tier,
+    value: Math.max(r - shrink, 28)
+  });
+  return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : Math.max(r - shrink, 28);
 }
 function getOrbitSpeed(){
-  if(zenMode)return 2.2;
-  return 3.0+score*0.05;
+  const baseValue = zenMode ? 2.2 : (3.0+score*0.05);
+  const payload = applyOrbitaGameplayHooks('adjustOrbitSpeed', { value: baseValue });
+  return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : baseValue;
 }
 function getGravityStrength(){
-  if(zenMode)return 30; // Always a gentle pull
-  if(score<25)return 0;
-  return Math.min((score-25)*1.5,60);
+  let baseValue = 30; // Always a gentle pull in zen
+  if(!zenMode){
+    if(score<25) baseValue = 0;
+    else baseValue = Math.min((score-25)*1.5,60);
+  }
+  const payload = applyOrbitaGameplayHooks('adjustGravityStrength', { value: baseValue });
+  return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : baseValue;
 }
 
 const PHASE_NAMES={2:'DISTÂNCIA',3:'VELOCIDADE',4:'ASTEROIDES',5:'NÓS VIVOS',6:'⚠ CAOS ⚠'};
@@ -524,7 +562,9 @@ let menuTouchLastY = 0;
 
 function getComboWindow(){
   const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
-  return (ev && ev.id==='combo_fever') ? 3.0 : 2.5;
+  const baseValue = (ev && ev.id==='combo_fever') ? 3.0 : 2.5;
+  const payload = applyOrbitaGameplayHooks('adjustComboWindow', { value: baseValue });
+  return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : baseValue;
 }
 
 function handleMissionReward(reward){

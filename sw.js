@@ -10,7 +10,6 @@ const APP_SHELL = [
   './js/data.js',
   './js/game.js',
   './js/render.js',
-  './js/debug_tools.js',
   './js/main.js',
   './icons/icon-192.png',
   './icons/icon-512.png'

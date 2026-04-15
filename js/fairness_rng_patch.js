@@ -255,7 +255,7 @@
     registerOrbitaGameplayHook('buildSpawnBranches', fairnessBuildSpawnBranches);
   }
 
-  const _origChoosePowerupType  const _origChoosePowerupType = typeof choosePowerupType === 'function' ? choosePowerupType : null;
+  const _origChoosePowerupType = typeof choosePowerupType === 'function' ? choosePowerupType : null;
   choosePowerupType = function(){
     const phase = getPhase();
 
@@ -285,7 +285,7 @@
 
   const _origSpawnPowerup = typeof spawnPowerup === 'function' ? spawnPowerup : null;
   spawnPowerup = function(){
-    const cn = nodes[ball.currentNode];
+    const cn = (typeof getSafeCurrentNode === 'function') ? getSafeCurrentNode() : nodes[ball.currentNode];
     if (!cn) return;
 
     let target = null;

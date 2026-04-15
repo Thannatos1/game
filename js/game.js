@@ -34,6 +34,17 @@ function applyOrbitaGameplayHooks(name, payload){
 }
 
 window.registerOrbitaGameplayHook = registerOrbitaGameplayHook;
+
+function getSafeCurrentNode(){
+  if (Array.isArray(nodes) && nodes[ball.currentNode]) return nodes[ball.currentNode];
+  if (Array.isArray(nodes)) {
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i] && nodes[i].captured) return nodes[i];
+    }
+    return nodes[0] || null;
+  }
+  return null;
+}
 function getCaptureR(tier){
   const base = {easy:62,medium:50,hard:38,gold:34};
   let r = base[tier]||50;
@@ -1020,7 +1031,8 @@ function update(dt){
       for(let i=0;i<nodes.length;i++){
         const n=nodes[i];
         if(n.captured||!n.visible)continue;
-        const cn=nodes[ball.currentNode];
+        const cn=getSafeCurrentNode();
+        if(!cn) continue;
         const dOrigin=dist(cn.x,cn.y,n.x,n.y);
         const dBall=dist(ball.x,ball.y,n.x,n.y);
         if(dBall<dOrigin+(zenMode?500:200)){anyReachable=true;break;}
@@ -1036,8 +1048,11 @@ function update(dt){
   // Camera
   if(ball.orbiting){
     const anchor = getGameplayCameraAnchor(false);
-    cam.tx=nodes[ball.currentNode].x-W*anchor.x;
-    cam.ty=nodes[ball.currentNode].y-H*anchor.y;
+    const cn = getSafeCurrentNode();
+    if(cn){
+      cam.tx=cn.x-W*anchor.x;
+      cam.ty=cn.y-H*anchor.y;
+    }
   } else {
     const anchor = getGameplayCameraAnchor(true);
     cam.tx=ball.x-W*anchor.x;

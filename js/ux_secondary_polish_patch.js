@@ -169,6 +169,21 @@
     return { x:(W-w)/2, w };
   }
 
+
+  function getSkinsScrollViewport(){
+    const meta = getSecondaryMeta() || { width:560, stageY:0.11 };
+    const rect = getStageRect(meta);
+    const sideInset = Math.max(10, Math.min(18, rect.w * 0.035));
+    const top = rect.y + 72;
+    const bottom = Math.min(rect.y + rect.h - 44, H - 42);
+    return {
+      x: rect.x + sideInset,
+      w: rect.w - sideInset*2,
+      top,
+      bottom
+    };
+  }
+
   function getBackgroundsScrollViewport(){
     const meta = getSecondaryMeta() || { width:380, stageY:0.11 };
     const rect = getStageRect(meta);
@@ -268,7 +283,7 @@
     X.restore();
   }
 
-  // Re-layout SKINS to fit the centered shell instead of the full screen width.
+  // Re-layout SKINS with an internal scroll panel on mobile.
   if (typeof drawSkinsMenu === 'function') {
     drawSkinsMenu = function(){
       X.textAlign='center'; X.textBaseline='middle';
@@ -279,25 +294,25 @@
       X.fillText('SKINS',W/2,H*0.06);
       X.shadowBlur=0;
 
-      X.fillStyle='rgba(255,255,255,0.5)';
-      X.font='12px -apple-system, system-ui, sans-serif';
-      const totalSkins=Object.keys(SKINS).length;
-      X.fillText(unlockedSkins.length+' / '+totalSkins+' DESBLOQUEADAS',W/2,H*0.06+22);
-
       drawBackBtn();
 
       const rarities=['common','rare','legendary','stellar'];
       const skinsByRarity={common:[],rare:[],legendary:[],stellar:[]};
       for(const k in SKINS) skinsByRarity[SKINS[k].rarity].push(k);
 
-      const box = getContentRect(520);
-      const itemSize=70, gap=12;
-      const cols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
+      const viewport = getSkinsScrollViewport();
+      drawPanelScrollShell(viewport, '#c084fc');
+
+      const itemSize = 70;
+      const gap = 12;
+      const innerW = viewport.w - 18;
+      const cols = Math.max(1, Math.floor((innerW + gap) / (itemSize + gap)));
       const gridW = cols*(itemSize+gap)-gap;
-      const headerX = box.x + 4;
-      const contentStartY=H*0.13;
-      let curY=contentStartY;
-      const viewport = beginMenuScrollClip();
+      const headerX = viewport.x + 10;
+      const contentStartY = viewport.top + 10;
+      let curY = contentStartY;
+
+      beginPanelScrollClip(viewport);
 
       for(const rarity of rarities){
         const skins=skinsByRarity[rarity];
@@ -307,12 +322,12 @@
         X.font='bold 13px -apple-system, system-ui, sans-serif';
         X.textAlign='left';
         X.shadowColor=getRarityColor(rarity); X.shadowBlur=8;
-        X.fillText(getRarityName(rarity), headerX, curY);
+        X.fillText(getRarityName(rarity), headerX, curY + 2);
         X.shadowBlur=0;
-        curY+=22;
+        curY += 22;
 
         let col=0;
-        let startX=(W-gridW)/2;
+        let startX=viewport.x + (viewport.w - gridW)/2;
         for(let idx=0; idx<skins.length; idx++){
           const skinKey=skins[idx];
           const skin=SKINS[skinKey];
@@ -365,10 +380,10 @@
         curY+=10;
       }
 
-      endMenuScrollClip();
+      endPanelScrollClip();
       setMenuScrollBounds(contentStartY, curY, viewport);
-      drawMenuScrollBar(viewport);
-      drawMenuScrollFades(viewport);
+      drawPanelScrollBar(viewport, '#c084fc');
+      drawPanelScrollFades(viewport);
     };
   }
 
@@ -599,10 +614,13 @@
 
   isMenuScreenScrollable = function(){
     const baseScrollable = _origIsMenuScreenScrollable ? _origIsMenuScreenScrollable() : false;
-    return baseScrollable || menuScreen === 'backgrounds' || menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking';
+    return baseScrollable || menuScreen === 'skins' || menuScreen === 'backgrounds' || menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking';
   };
 
   getMenuScrollViewport = function(){
+    if(menuScreen === 'skins'){
+      return getSkinsScrollViewport();
+    }
     if(menuScreen === 'backgrounds'){
       return getBackgroundsScrollViewport();
     }

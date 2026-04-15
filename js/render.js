@@ -9,22 +9,46 @@ function pickRandom(list){
   return list[Math.floor(Math.random()*list.length)];
 }
 
+function isCompactGameplayViewport(){
+  return W <= 520 && H >= W * 1.35;
+}
+
+function getBackgroundProfile(){
+  const compact = isCompactGameplayViewport();
+  return {
+    compact,
+    sizeMul: compact ? 0.78 : 1,
+    glowMul: compact ? 0.72 : 1,
+    alphaMul: compact ? 0.82 : 1,
+    beamMul: compact ? 0.72 : 1,
+  };
+}
+
 function buildBackgroundDecorLayout(){
-  const leftX  = () => rand(W*0.12, W*0.28);
-  const rightX = () => rand(W*0.72, W*0.88);
-  const topY   = () => rand(H*0.14, H*0.30);
-  const midY   = () => rand(H*0.34, H*0.56);
-  const lowY   = () => rand(H*0.72, H*0.86);
+  const bgProfile = getBackgroundProfile();
+  const compact = bgProfile.compact;
+  const sizeMul = bgProfile.sizeMul;
+
+  const leftX  = () => compact ? rand(W*0.04, W*0.14) : rand(W*0.12, W*0.28);
+  const rightX = () => compact ? rand(W*0.86, W*0.96) : rand(W*0.72, W*0.88);
+  const topY   = () => compact ? rand(H*0.10, H*0.24) : rand(H*0.14, H*0.30);
+  const midY   = () => compact ? rand(H*0.30, H*0.54) : rand(H*0.34, H*0.56);
+  const lowY   = () => compact ? rand(H*0.78, H*0.90) : rand(H*0.72, H*0.86);
 
   const blackSide = Math.random() < 0.5 ? 'left' : 'right';
   const blackX = blackSide === 'left' ? leftX() : rightX();
   const blackY = lowY();
 
   const redSide = Math.random() < 0.5 ? 'left' : 'right';
-  const redX = redSide === 'left' ? rand(W*0.18, W*0.34) : rand(W*0.66, W*0.82);
+  const redX = redSide === 'left' ? (compact ? rand(W*0.04, W*0.14) : rand(W*0.18, W*0.34)) : (compact ? rand(W*0.86, W*0.96) : rand(W*0.66, W*0.82));
   const redY = topY();
 
-  const pulsarOptions = [
+  const pulsarOptions = compact ? [
+    { x: rand(W*0.04, W*0.12), y: rand(H*0.14, H*0.24) },
+    { x: rand(W*0.88, W*0.96), y: rand(H*0.14, H*0.24) },
+    { x: rand(W*0.04, W*0.10), y: midY() },
+    { x: rand(W*0.90, W*0.96), y: midY() },
+  ] : [
     { x: rand(W*0.14, W*0.28), y: rand(H*0.18, H*0.32) },
     { x: rand(W*0.72, W*0.86), y: rand(H*0.18, H*0.32) },
     { x: rand(W*0.10, W*0.18), y: midY() },
@@ -33,7 +57,12 @@ function buildBackgroundDecorLayout(){
   const pulsar = pickRandom(pulsarOptions);
   const radial = Math.atan2(pulsar.y - H/2, pulsar.x - W/2);
 
-  const saturnOptions = [
+  const saturnOptions = compact ? [
+    { x: rand(W*0.02, W*0.10), y: rand(H*0.18, H*0.30), side:'left'  },
+    { x: rand(W*0.90, W*0.98), y: rand(H*0.18, H*0.30), side:'right' },
+    { x: rand(W*0.02, W*0.10), y: rand(H*0.54, H*0.66), side:'left'  },
+    { x: rand(W*0.90, W*0.98), y: rand(H*0.54, H*0.66), side:'right' },
+  ] : [
     { x: rand(W*0.08, W*0.18), y: rand(H*0.22, H*0.36), side:'left'  },
     { x: rand(W*0.82, W*0.92), y: rand(H*0.22, H*0.36), side:'right' },
     { x: rand(W*0.10, W*0.20), y: rand(H*0.48, H*0.62), side:'left'  },
@@ -44,19 +73,25 @@ function buildBackgroundDecorLayout(){
   bgDecorLayout = {
     _w: W,
     _h: H,
+    _bgProfile: bgProfile,
     blackhole: {
       x: blackX,
       y: blackY,
-      diskR: rand(26, 34),
+      diskR: rand(26, 34) * sizeMul,
       ringTilt: blackSide === 'left' ? rand(-0.34, -0.18) : rand(0.18, 0.34),
     },
     redgiant: {
       x: redX,
       y: redY,
-      starR: rand(64, 80),
+      starR: rand(64, 80) * sizeMul,
     },
     galaxy: (() => {
-      const galaxyOptions = [
+      const galaxyOptions = compact ? [
+        { x: rand(W*0.04, W*0.12), y: rand(H*0.14, H*0.24), side:'left',  tilt: rand(0.18, 0.34) },
+        { x: rand(W*0.88, W*0.96), y: rand(H*0.14, H*0.24), side:'right', tilt: rand(-0.34, -0.18) },
+        { x: rand(W*0.04, W*0.12), y: rand(H*0.58, H*0.72), side:'left',  tilt: rand(0.16, 0.30) },
+        { x: rand(W*0.88, W*0.96), y: rand(H*0.58, H*0.72), side:'right', tilt: rand(-0.30, -0.16) },
+      ] : [
         { x: rand(W*0.12, W*0.22), y: rand(H*0.18, H*0.30), side:'left',  tilt: rand(0.18, 0.34) },
         { x: rand(W*0.78, W*0.88), y: rand(H*0.18, H*0.30), side:'right', tilt: rand(-0.34, -0.18) },
         { x: rand(W*0.10, W*0.20), y: rand(H*0.56, H*0.70), side:'left',  tilt: rand(0.16, 0.30) },
@@ -68,22 +103,22 @@ function buildBackgroundDecorLayout(){
         y: g.y,
         side: g.side,
         tilt: g.tilt,
-        scale: rand(0.72, 0.92),
+        scale: rand(0.72, 0.92) * (compact ? 0.78 : 1),
       };
     })(),
     pulsar: {
       x: pulsar.x,
       y: pulsar.y,
-      scale: rand(0.90, 1.05),
+      scale: rand(0.90, 1.05) * (compact ? 0.80 : 1),
       beamBase: radial + Math.PI/2 + rand(-0.18, 0.18),
     },
     saturn: {
       x: saturn.x,
       y: saturn.y,
       side: saturn.side,
-      planetR: rand(56, 68),
+      planetR: rand(56, 68) * sizeMul,
       ringTilt: saturn.side === 'left' ? rand(0.18, 0.34) : rand(-0.34, -0.18),
-      hazeR: rand(160, 190),
+      hazeR: rand(160, 190) * sizeMul,
     },
   };
 }
@@ -98,6 +133,11 @@ function getBackgroundDecor(type){
 function drawBackground(){
   const bg=BACKGROUNDS[selectedBg]||BACKGROUNDS.space;
   const t=menuT;
+  const bgProfile = getBackgroundProfile();
+  const compactBg = bgProfile.compact;
+  const bgGlowMul = bgProfile.glowMul;
+  const bgAlphaMul = bgProfile.alphaMul;
+  const bgBeamMul = bgProfile.beamMul;
 
   if(bg.type==='stars'){
     // Default space - just dark
@@ -131,7 +171,7 @@ function drawBackground(){
     const drift = t*0.045;
 
     // soft cosmic haze kept tighter so it does not invade the play path
-    const haze=X.createRadialGradient(cx,cy,0,cx,cy,150*scale);
+    const haze=X.createRadialGradient(cx,cy,0,cx,cy,150*scale*bgGlowMul);
     haze.addColorStop(0,'rgba(160,120,255,0.10)');
     haze.addColorStop(0.42,'rgba(90,70,180,0.06)');
     haze.addColorStop(1,'rgba(0,0,0,0)');
@@ -149,7 +189,7 @@ function drawBackground(){
         const x=cx + rx*Math.cos(tilt) - ry*Math.sin(tilt);
         const y=cy + rx*Math.sin(tilt) + ry*Math.cos(tilt);
 
-        X.globalAlpha=Math.max(0.05,0.22-j*0.004);
+        X.globalAlpha=Math.max(0.05, (0.22-j*0.004) * bgAlphaMul);
         X.fillStyle=j<12?'rgba(255,245,170,0.92)':(j<26?'rgba(255,140,210,0.78)':'rgba(150,135,255,0.68)');
         X.beginPath();X.arc(x,y,Math.max(0.8,2.3-j*0.03)*scale,0,Math.PI*2);X.fill();
       }
@@ -161,7 +201,7 @@ function drawBackground(){
       const radius=(78+Math.sin(i*1.7+t*0.3)*8)*scale;
       const px=cx + Math.cos(a)*radius*Math.cos(tilt) - Math.sin(a)*(radius*0.42)*Math.sin(tilt);
       const py=cy + Math.cos(a)*radius*Math.sin(tilt) + Math.sin(a)*(radius*0.42)*Math.cos(tilt);
-      X.globalAlpha=0.10+0.05*Math.sin(t*0.8+i);
+      X.globalAlpha=(0.10+0.05*Math.sin(t*0.8+i)) * bgAlphaMul;
       X.fillStyle=i%2===0?'rgba(255,220,120,0.75)':'rgba(180,140,255,0.66)';
       X.beginPath();X.arc(px,py,1.3*scale,0,Math.PI*2);X.fill();
     }
@@ -183,7 +223,7 @@ function drawBackground(){
     const ringTilt = (decor.ringTilt ?? -0.22) + Math.sin(t*0.22)*0.02;
 
     // Soft distant haze
-    const hg=X.createRadialGradient(cx,cy,0,cx,cy,150);
+    const hg=X.createRadialGradient(cx,cy,0,cx,cy,150*bgGlowMul);
     hg.addColorStop(0,'rgba(255,140,40,0.06)');
     hg.addColorStop(0.45,'rgba(180,90,20,0.04)');
     hg.addColorStop(1,'rgba(0,0,0,0)');
@@ -235,7 +275,7 @@ else if(bg.type==='redgiant'){
     const starR = decor.starR ?? 76;
 
     // Softer atmosphere, tighter to the star
-    const ag=X.createRadialGradient(cx,cy,0,cx,cy,170);
+    const ag=X.createRadialGradient(cx,cy,0,cx,cy,170*bgGlowMul);
     ag.addColorStop(0,'rgba(255,110,45,0.12)');
     ag.addColorStop(0.34,'rgba(210,55,20,0.07)');
     ag.addColorStop(1,'rgba(0,0,0,0)');
@@ -275,13 +315,13 @@ else if(bg.type==='pulsar'){
     const pScale = decor.scale ?? 1.0;
 
     // Deep ambient glows
-    const neb1=X.createRadialGradient(pcx,pcy,0,pcx,pcy,260*pScale);
+    const neb1=X.createRadialGradient(pcx,pcy,0,pcx,pcy,260*pScale*bgGlowMul);
     neb1.addColorStop(0,'rgba(80,180,255,0.14)');
     neb1.addColorStop(0.45,'rgba(70,100,255,0.08)');
     neb1.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=neb1;X.fillRect(-10,-10,W+20,H+20);
 
-    const neb2=X.createRadialGradient(W*0.92,H*0.12,0,W*0.92,H*0.12,220*pScale);
+    const neb2=X.createRadialGradient(W*0.92,H*0.12,0,W*0.92,H*0.12,220*pScale*bgGlowMul);
     neb2.addColorStop(0,'rgba(180,120,255,0.08)');
     neb2.addColorStop(1,'rgba(0,0,0,0)');
     X.fillStyle=neb2;X.fillRect(-10,-10,W+20,H+20);
@@ -300,7 +340,7 @@ else if(bg.type==='pulsar'){
     }
 
     // Radiation halo
-    const ph=X.createRadialGradient(pcx,pcy,0,pcx,pcy,210*pScale);
+    const ph=X.createRadialGradient(pcx,pcy,0,pcx,pcy,210*pScale*bgGlowMul);
     ph.addColorStop(0,'rgba(160,245,255,0.18)');
     ph.addColorStop(0.18,'rgba(110,180,255,0.14)');
     ph.addColorStop(1,'rgba(0,0,0,0)');
@@ -314,16 +354,16 @@ else if(bg.type==='pulsar'){
       X.strokeStyle='rgba(90,225,255,0.95)';
       X.lineWidth=26;
       X.beginPath();
-      X.moveTo(pcx-Math.cos(ang)*420*pScale,pcy-Math.sin(ang)*420*pScale);
-      X.lineTo(pcx+Math.cos(ang)*420*pScale,pcy+Math.sin(ang)*420*pScale);
+      X.moveTo(pcx-Math.cos(ang)*420*pScale*bgBeamMul,pcy-Math.sin(ang)*420*pScale*bgBeamMul);
+      X.lineTo(pcx+Math.cos(ang)*420*pScale*bgBeamMul,pcy+Math.sin(ang)*420*pScale*bgBeamMul);
       X.stroke();
 
       X.globalAlpha=0.26;
       X.strokeStyle='rgba(210,250,255,0.95)';
       X.lineWidth=7;
       X.beginPath();
-      X.moveTo(pcx-Math.cos(ang)*420*pScale,pcy-Math.sin(ang)*420*pScale);
-      X.lineTo(pcx+Math.cos(ang)*420*pScale,pcy+Math.sin(ang)*420*pScale);
+      X.moveTo(pcx-Math.cos(ang)*420*pScale*bgBeamMul,pcy-Math.sin(ang)*420*pScale*bgBeamMul);
+      X.lineTo(pcx+Math.cos(ang)*420*pScale*bgBeamMul,pcy+Math.sin(ang)*420*pScale*bgBeamMul);
       X.stroke();
     }
 
@@ -382,7 +422,7 @@ else if(bg.type==='pulsar'){
     const hazeR = decor.hazeR ?? 178;
 
     // Softer warm haze, tighter to the planet
-    const sg=X.createRadialGradient(scx,scy,0,scx,scy,hazeR);
+    const sg=X.createRadialGradient(scx,scy,0,scx,scy,hazeR*bgGlowMul);
     sg.addColorStop(0,'rgba(255,215,150,0.10)');
     sg.addColorStop(0.34,'rgba(180,120,80,0.06)');
     sg.addColorStop(1,'rgba(0,0,0,0)');
@@ -501,19 +541,19 @@ else if(bg.type==='pulsar'){
     X.fillStyle='#050713';X.fillRect(-10,-10,W+20,H+20);
 
     // Deep side glows
-    const lg=X.createRadialGradient(W*0.10,H*0.52,0,W*0.10,H*0.52,W*0.42);
+    const lg=X.createRadialGradient(W*(compactBg ? 0.04 : 0.10),H*0.52,0,W*(compactBg ? 0.04 : 0.10),H*0.52,W*(compactBg ? 0.28 : 0.42));
     lg.addColorStop(0,'rgba(90,140,255,0.16)');
     lg.addColorStop(1,'rgba(90,140,255,0)');
     X.fillStyle=lg;X.fillRect(-10,-10,W+20,H+20);
 
-    const rg=X.createRadialGradient(W*0.90,H*0.52,0,W*0.90,H*0.52,W*0.42);
+    const rg=X.createRadialGradient(W*(compactBg ? 0.96 : 0.90),H*0.52,0,W*(compactBg ? 0.96 : 0.90),H*0.52,W*(compactBg ? 0.28 : 0.42));
     rg.addColorStop(0,'rgba(180,90,255,0.16)');
     rg.addColorStop(1,'rgba(180,90,255,0)');
     X.fillStyle=rg;X.fillRect(-10,-10,W+20,H+20);
 
     // Cathedral pillars / arches at the edges
-    X.globalAlpha=0.34;
-    for(const side of [0.12,0.88]){
+    X.globalAlpha=(compactBg ? 0.24 : 0.34);
+    for(const side of compactBg ? [0.05,0.95] : [0.12,0.88]){
       const cx=W*side;
       X.strokeStyle=side<0.5?'rgba(120,180,255,0.38)':'rgba(210,120,255,0.38)';
       X.lineWidth=3;
@@ -551,7 +591,7 @@ else if(bg.type==='pulsar'){
     }
 
     // Safe center glow that does not cover the aim corridor
-    const cg=X.createRadialGradient(W/2,H*0.78,0,W/2,H*0.78,W*0.32);
+    const cg=X.createRadialGradient(W/2,H*0.78,0,W/2,H*0.78,W*(compactBg ? 0.24 : 0.32));
     cg.addColorStop(0,'rgba(255,240,190,0.12)');
     cg.addColorStop(1,'rgba(255,240,190,0)');
     X.fillStyle=cg;X.fillRect(-10,-10,W+20,H+20);
@@ -571,7 +611,7 @@ else if(bg.type==='pulsar'){
     X.fillStyle='#04040f';X.fillRect(-10,-10,W+20,H+20);
 
     // Large distant galaxy in the upper-right, away from the center lane
-    const gcx=W*0.78, gcy=H*0.26;
+    const gcx=W*(compactBg ? 0.88 : 0.78), gcy=H*(compactBg ? 0.20 : 0.26);
     for(let arm=0;arm<4;arm++){
       const armBase=t*0.04+arm*Math.PI/2;
       for(let j=0;j<54;j++){
@@ -584,14 +624,14 @@ else if(bg.type==='pulsar'){
         X.fill();
       }
     }
-    const gg=X.createRadialGradient(gcx,gcy,0,gcx,gcy,120);
+    const gg=X.createRadialGradient(gcx,gcy,0,gcx,gcy,120*bgGlowMul);
     gg.addColorStop(0,'rgba(255,235,255,0.22)');
     gg.addColorStop(1,'rgba(255,235,255,0)');
     X.globalAlpha=1;
     X.fillStyle=gg;X.fillRect(-10,-10,W+20,H+20);
 
     // Throne silhouette low center/right
-    X.globalAlpha=0.22;
+    X.globalAlpha=compactBg ? 0.16 : 0.22;
     X.fillStyle='rgba(170,120,255,0.20)';
     X.beginPath();
     X.moveTo(W*0.60,H*0.86);
@@ -622,7 +662,7 @@ else if(bg.type==='pulsar'){
     }
 
     // Constellation nodes
-    X.globalAlpha=0.35;
+    X.globalAlpha=compactBg ? 0.24 : 0.35;
     const pts=[[W*0.16,H*0.24],[W*0.21,H*0.18],[W*0.27,H*0.25],[W*0.31,H*0.20],[W*0.36,H*0.28]];
     X.strokeStyle='rgba(180,210,255,0.18)';
     X.lineWidth=1;
@@ -639,8 +679,8 @@ else if(bg.type==='pulsar'){
     X.fillStyle='#01030a';X.fillRect(-10,-10,W+20,H+20);
 
     // Creation rift
-    const rcx=W*0.74, rcy=H*0.32;
-    const rg1=X.createRadialGradient(rcx,rcy,0,rcx,rcy,150);
+    const rcx=W*(compactBg ? 0.88 : 0.74), rcy=H*(compactBg ? 0.22 : 0.32);
+    const rg1=X.createRadialGradient(rcx,rcy,0,rcx,rcy,150*bgGlowMul);
     rg1.addColorStop(0,'rgba(255,245,210,0.28)');
     rg1.addColorStop(0.18,'rgba(255,190,90,0.20)');
     rg1.addColorStop(0.38,'rgba(80,220,255,0.16)');
@@ -686,7 +726,7 @@ else if(bg.type==='pulsar'){
     }
 
     // Subtle lower-left proto-galaxy
-    const pcx=W*0.18,pcy=H*0.78;
+    const pcx=W*(compactBg ? 0.08 : 0.18),pcy=H*(compactBg ? 0.84 : 0.78);
     for(let i=0;i<18;i++){
       const a=t*0.03+i*0.32;
       const d=i*3.2;
@@ -699,15 +739,15 @@ else if(bg.type==='pulsar'){
 
   else if(bg.type==='cosmic'){
     X.fillStyle='#02020a';X.fillRect(-10,-10,W+20,H+20);
-    const ng=X.createRadialGradient(W*0.3,H*0.4,0,W*0.3,H*0.4,W*0.6);
+    const ng=X.createRadialGradient(W*(compactBg ? 0.18 : 0.3),H*0.4,0,W*(compactBg ? 0.18 : 0.3),H*0.4,W*(compactBg ? 0.42 : 0.6));
     ng.addColorStop(0,'rgba(100,50,200,0.4)');
     ng.addColorStop(1,'rgba(100,50,200,0)');
     X.fillStyle=ng;X.fillRect(-10,-10,W+20,H+20);
-    const ng2=X.createRadialGradient(W*0.7,H*0.6,0,W*0.7,H*0.6,W*0.5);
+    const ng2=X.createRadialGradient(W*(compactBg ? 0.82 : 0.7),H*0.6,0,W*(compactBg ? 0.82 : 0.7),H*0.6,W*(compactBg ? 0.36 : 0.5));
     ng2.addColorStop(0,'rgba(0,150,200,0.3)');
     ng2.addColorStop(1,'rgba(0,150,200,0)');
     X.fillStyle=ng2;X.fillRect(-10,-10,W+20,H+20);
-    const cx=W*0.2,cy=H*0.7;
+    const cx=W*(compactBg ? 0.08 : 0.2),cy=H*(compactBg ? 0.78 : 0.7);
     for(let i=0;i<25;i++){
       const a=t*0.05+i*0.25;
       const d=i*4;

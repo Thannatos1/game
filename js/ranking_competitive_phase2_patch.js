@@ -263,31 +263,15 @@
     drawTopStatusBadges();
     X.textAlign='center'; X.textBaseline='middle';
 
-    const layout = (typeof getMenuHeaderLayout === 'function')
-      ? getMenuHeaderLayout()
-      : { topBtnY: 18, titleY: Math.max(66, H*0.082), subtitleY: Math.max(88, H*0.082 + 22), contentStartY: Math.max(118, H*0.15) };
-
     X.fillStyle='#e0e0ff';
     X.font='bold 26px -apple-system, system-ui, sans-serif';
     X.shadowColor='#ff6b9d'; X.shadowBlur=15;
-    X.fillText('🌍 RANKING COMPETITIVO',W/2,layout.titleY);
+    X.fillText('🌍 RANKING COMPETITIVO',W/2,H*0.05);
     X.shadowBlur=0;
 
     drawBackBtn();
 
-    const loX=W-85, loY=layout.topBtnY, loW=72, loH=28;
-    X.globalAlpha=0.7;
-    X.fillStyle='rgba(0,0,0,0.6)';
-    roundRect(loX,loY,loW,loH,8); X.fill();
-    X.strokeStyle='#ff6b6b'; X.lineWidth=1;
-    roundRect(loX,loY,loW,loH,8); X.stroke();
-    X.fillStyle='#ff6b6b';
-    X.font='bold 10px -apple-system, system-ui, sans-serif';
-    X.fillText('SAIR',loX+loW/2,loY+loH/2);
-    X.globalAlpha=1;
-    menuBtnAreas.push({ x:loX,y:loY,w:loW,h:loH, action:()=>{ signOut(); menuScreen='main'; } });
-
-    const rbx=W/2-44, rby=layout.subtitleY + 8, rbw=88, rbh=26;
+    const rbx=W/2-44, rby=H*0.115, rbw=88, rbh=26;
     X.globalAlpha=0.84;
     X.fillStyle='rgba(0,0,0,0.6)';
     roundRect(rbx,rby,rbw,rbh,6); X.fill();
@@ -318,7 +302,7 @@
 
     const sx = 15;
     const sw = W - 30;
-    let y = layout.contentStartY + 14;
+    let y = H * 0.16;
     const state = getObjectiveState();
 
     X.fillStyle='rgba(0,0,0,0.56)';

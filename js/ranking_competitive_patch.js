@@ -143,7 +143,6 @@
 
     drawBackBtn();
 
-
     const rbx=W/2-44, rby=H*0.115, rbw=88, rbh=26;
     X.globalAlpha=0.84;
     X.fillStyle='rgba(0,0,0,0.6)';

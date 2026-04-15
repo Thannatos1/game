@@ -4,6 +4,20 @@
   const _origGetMenuScrollViewport = typeof getMenuScrollViewport === 'function' ? getMenuScrollViewport : null;
   const _origDrawMenuUI = typeof drawMenuUI === 'function' ? drawMenuUI : null;
 
+
+  function isCompactMobileMenu(){
+    try {
+      return H > W && Math.min(W, H) <= 900;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function getSecondaryFooterBottomInset(){
+    if (isCompactMobileMenu()) return 74;
+    return 32;
+  }
+
   function getSecondaryMeta(){
     switch(menuScreen){
       case 'skins':
@@ -34,27 +48,11 @@
     }
   }
 
-  function getSecondaryLayout(){
-    const titleY = (typeof getMenuHeaderLayout === 'function')
-      ? getMenuHeaderLayout()
-      : { titleY: Math.max(66, H*0.082), subtitleY: Math.max(88, H*0.082 + 22), contentStartY: Math.max(118, H*0.15) };
-    const stageTop = Math.max(titleY.subtitleY + 12, titleY.contentStartY - 6);
-    return {
-      titleY: titleY.titleY,
-      subtitleY: titleY.subtitleY,
-      contentStartY: titleY.contentStartY,
-      stageTop,
-      footerY: H - 32
-    };
-  }
-
   function getStageRect(meta){
-    const layout = getSecondaryLayout();
     const margin = 14;
     const w = meta && meta.width ? Math.min(W - margin*2, meta.width) : (W - margin*2);
-    const y = layout.stageTop;
-    const bottomPad = (meta && meta.hideFooter) ? 16 : 46;
-    return { x:(W-w)/2, y, w, h:Math.max(120, H - y - bottomPad) };
+    const y = H * ((meta && meta.stageY) ? meta.stageY : 0.11);
+    return { x:(W-w)/2, y, w, h:H*0.82 };
   }
 
   function drawSecondaryStage(meta){
@@ -94,11 +92,10 @@
 
   function drawSecondarySubheader(meta){
     if (!meta || meta.hideChip) return;
-    const layout = getSecondaryLayout();
     const chipW = Math.min(W*0.68, meta.chipW || 320);
     const chipH = 24;
     const x = (W - chipW) / 2;
-    const y = layout.subtitleY - 11;
+    const y = H * (meta.chipY || 0.092);
 
     X.save();
     X.globalAlpha = 0.88;
@@ -124,11 +121,10 @@
 
   function drawSecondaryFooter(meta){
     if(!meta || meta.hideFooter) return;
-    const layout = getSecondaryLayout();
     const chipW = Math.min(W*0.72, meta.footerW || 330);
     const chipH = 24;
     const x = (W - chipW) / 2;
-    const y = layout.footerY;
+    const y = H - getSecondaryFooterBottomInset();
 
     X.save();
     X.globalAlpha = 0.62;
@@ -192,12 +188,16 @@
     drawSkinsMenu = function(){
       X.textAlign='center'; X.textBaseline='middle';
 
-      const layout = getSecondaryLayout();
       X.fillStyle='#e0e0ff';
       X.font='bold 30px -apple-system, system-ui, sans-serif';
       X.shadowColor='#b0b0ff'; X.shadowBlur=15;
-      X.fillText('SKINS',W/2,layout.titleY);
+      X.fillText('SKINS',W/2,H*0.06);
       X.shadowBlur=0;
+
+      X.fillStyle='rgba(255,255,255,0.5)';
+      X.font='12px -apple-system, system-ui, sans-serif';
+      const totalSkins=Object.keys(SKINS).length;
+      X.fillText(unlockedSkins.length+' / '+totalSkins+' DESBLOQUEADAS',W/2,H*0.06+22);
 
       drawBackBtn();
 
@@ -210,7 +210,7 @@
       const cols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
       const gridW = cols*(itemSize+gap)-gap;
       const headerX = box.x + 4;
-      const contentStartY=layout.contentStartY;
+      const contentStartY=H*0.13;
       let curY=contentStartY;
       const viewport = beginMenuScrollClip();
 
@@ -287,107 +287,15 @@
     };
   }
 
-  // Re-layout BACKGROUNDS to avoid hidden counters behind the subtitle chip.
-  if (typeof drawBackgroundsMenu === 'function') {
-    drawBackgroundsMenu = function(){
-      X.textAlign='center'; X.textBaseline='middle';
-
-      const layout = getSecondaryLayout();
-      X.fillStyle='#e0e0ff';
-      X.font='bold 30px -apple-system, system-ui, sans-serif';
-      X.shadowColor='#b0b0ff'; X.shadowBlur=15;
-      X.fillText('FUNDOS',W/2,layout.titleY);
-      X.shadowBlur=0;
-
-      drawBackBtn();
-
-      const itemW=Math.min(W*0.8,280);
-      const itemH=80;
-      const gap=12;
-      const startX=(W-itemW)/2;
-      const contentStartY=layout.contentStartY;
-      let curY=contentStartY;
-      const viewport = beginMenuScrollClip();
-
-      for(const bgKey in BACKGROUNDS){
-        const bg=BACKGROUNDS[bgKey];
-        const isUnlocked=unlockedBgs.includes(bgKey);
-        const isSelected=selectedBg===bgKey;
-        const screenY=curY+menuScrollY;
-
-        X.save();
-        X.beginPath();
-        roundRect(startX,curY,itemW,itemH,10);
-        X.clip();
-
-        if(isUnlocked){
-          drawMiniBg(bg.type,startX,curY,itemW,itemH);
-        } else {
-          X.fillStyle='#0a0a18';
-          X.fillRect(startX,curY,itemW,itemH);
-        }
-        X.restore();
-
-        X.strokeStyle=isSelected?'#ffd32a':(isUnlocked?'#70a1ff':'#444');
-        X.lineWidth=isSelected?3:1.5;
-        if(isSelected){X.shadowColor='#ffd32a';X.shadowBlur=12;}
-        roundRect(startX,curY,itemW,itemH,10);
-        X.stroke();
-        X.shadowBlur=0;
-
-        X.fillStyle='rgba(0,0,0,0.6)';
-        X.fillRect(startX,curY+itemH-22,itemW,22);
-        X.fillStyle=isUnlocked?'#fff':'rgba(255,255,255,0.4)';
-        X.font='bold 13px -apple-system, system-ui, sans-serif';
-        X.textAlign='center';
-        X.textBaseline='middle';
-        X.fillText(bg.name.toUpperCase(),startX+itemW/2,curY+itemH-11);
-
-        if(bg.masterpiece){
-          X.fillStyle='rgba(255,215,120,0.92)';
-          X.font='bold 10px -apple-system, system-ui, sans-serif';
-          X.textAlign='left';
-          X.textBaseline='middle';
-          X.fillText('✦ OBRA-PRIMA',startX+10,curY+12);
-          X.textAlign='center';
-          X.textBaseline='middle';
-        }
-
-        if(!isUnlocked){
-          X.fillStyle='rgba(255,255,255,0.6)';
-          X.font='28px sans-serif';
-          X.fillText('🔒',startX+itemW/2,curY+itemH/2-14);
-          X.fillStyle=bg.masterpiece?'rgba(255,220,140,0.76)':'rgba(255,255,255,0.5)';
-          X.font=bg.masterpiece?'bold 9px -apple-system, system-ui, sans-serif':'11px -apple-system, system-ui, sans-serif';
-          const unlockLabel=(typeof getBackgroundUnlockLabel==='function') ? getBackgroundUnlockLabel(bgKey) : (bg.unlock+' pts');
-          X.fillText(unlockLabel,startX+itemW/2,curY+itemH/2+13);
-        } else {
-          menuBtnAreas.push({
-            x:startX,y:screenY,w:itemW,h:itemH,
-            action:()=>{selectedBg=bgKey;saveData();}
-          });
-        }
-
-        curY+=itemH+gap;
-      }
-
-      endMenuScrollClip();
-      setMenuScrollBounds(contentStartY, curY, viewport);
-      drawMenuScrollBar(viewport);
-      drawMenuScrollFades(viewport);
-    };
-  }
-
   // Re-layout STATS so achievements stay centered inside the stage.
   if (typeof drawStatsMenu === 'function') {
     drawStatsMenu = function(){
       X.textAlign='center'; X.textBaseline='middle';
 
-      const layout = getSecondaryLayout();
       X.fillStyle='#e0e0ff';
       X.font='bold 30px -apple-system, system-ui, sans-serif';
       X.shadowColor='#ffd32a'; X.shadowBlur=15;
-      X.fillText('ESTATÍSTICAS',W/2,layout.titleY);
+      X.fillText('ESTATÍSTICAS',W/2,H*0.06);
       X.shadowBlur=0;
 
       drawBackBtn();
@@ -404,7 +312,7 @@
       ];
 
       const box = getContentRect(560);
-      const contentStartY = layout.contentStartY;
+      const contentStartY = H*0.13;
       let curY = contentStartY;
       const viewport = beginMenuScrollClip();
 
@@ -520,8 +428,7 @@
       if(vp) return vp;
     }
     if(menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking'){
-      const layout = (typeof getMenuHeaderLayout === 'function') ? getMenuHeaderLayout() : { contentStartY: Math.max(118, H*0.15) };
-      return { top:layout.contentStartY - 10, bottom:H-18 };
+      return { top:H*0.135, bottom:H-(isCompactMobileMenu()?72:18) };
     }
     return null;
   };

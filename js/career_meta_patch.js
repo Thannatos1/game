@@ -433,7 +433,6 @@
       menuBtnAreas = [];
       if (menuScreen === 'career') {
         drawCareerMenu();
-        drawMuteBtn();
         return;
       }
       _origDrawMenuUI.apply(this, arguments);

@@ -516,9 +516,7 @@ function isPauseBtnTap(x, y) {
 }
 
 function isMuteBtnTap(x, y) {
-  const bx = W - MUTE_BTN.margin - PAUSE_BTN.size - 8 - MUTE_BTN.size;
-  const by = MUTE_BTN.margin;
-  return x >= bx && x <= bx + MUTE_BTN.size && y >= by && y <= by + MUTE_BTN.size;
+  return false;
 }
 
 // Menu button areas

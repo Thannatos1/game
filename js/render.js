@@ -1768,56 +1768,7 @@ function getMenuHeaderLayout(){
 }
 
 function drawMuteBtn(){
-  const s=MUTE_BTN.size, m=MUTE_BTN.margin;
-  const bx=W-m-PAUSE_BTN.size-8-s, by=m;
-
-  // Background circle
-  X.globalAlpha=0.3;
-  X.fillStyle='#000';
-  X.beginPath();X.arc(bx+s/2,by+s/2,s/2,0,Math.PI*2);X.fill();
-  X.globalAlpha=0.4;
-  X.strokeStyle='#ffffff';
-  X.lineWidth=1.5;
-  X.beginPath();X.arc(bx+s/2,by+s/2,s/2,0,Math.PI*2);X.stroke();
-
-  // Speaker icon
-  X.globalAlpha=0.85;
-  X.fillStyle='#ffffff';
-  X.strokeStyle='#ffffff';
-  X.lineWidth=2;
-  X.lineCap='round';
-  const cx=bx+s/2, cy=by+s/2;
-
-  // Speaker body
-  X.beginPath();
-  X.moveTo(cx-7,cy-3);
-  X.lineTo(cx-2,cy-3);
-  X.lineTo(cx+3,cy-7);
-  X.lineTo(cx+3,cy+7);
-  X.lineTo(cx-2,cy+3);
-  X.lineTo(cx-7,cy+3);
-  X.closePath();
-  X.fill();
-
-  if(muted){
-    // X mark
-    X.strokeStyle='#ff6b6b';
-    X.beginPath();
-    X.moveTo(cx+6,cy-5);
-    X.lineTo(cx+12,cy+5);
-    X.moveTo(cx+12,cy-5);
-    X.lineTo(cx+6,cy+5);
-    X.stroke();
-  } else {
-    // Sound waves
-    X.beginPath();
-    X.arc(cx+3,cy,5,-Math.PI/4,Math.PI/4);
-    X.stroke();
-    X.beginPath();
-    X.arc(cx+3,cy,9,-Math.PI/4,Math.PI/4);
-    X.stroke();
-  }
-  X.globalAlpha=1;
+  return;
 }
 
 function drawPauseBtn(){

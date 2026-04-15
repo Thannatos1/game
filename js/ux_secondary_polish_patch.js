@@ -1,34 +1,39 @@
 
 (function(){
+  function isSecondaryHeaderCompactMobile(){
+    return W <= 560 && H >= W * 1.25;
+  }
+
   const _origIsMenuScreenScrollable = typeof isMenuScreenScrollable === 'function' ? isMenuScreenScrollable : null;
   const _origGetMenuScrollViewport = typeof getMenuScrollViewport === 'function' ? getMenuScrollViewport : null;
   const _origDrawMenuUI = typeof drawMenuUI === 'function' ? drawMenuUI : null;
 
   function getSecondaryMeta(){
+    const mobile = isSecondaryHeaderCompactMobile();
     switch(menuScreen){
       case 'skins':
-        return { subtitle:'Coleção de pilotos e raridades', hint:'Toque em uma skin para equipar.', accent:'#c084fc', width:560, stageY:0.11, chipY:0.092, chipW:320, footerW:350 };
+        return { subtitle:'Coleção de pilotos e raridades', hint:'Toque em uma skin para equipar.', accent:'#c084fc', width:560, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:350 };
       case 'backgrounds':
-        return { subtitle:'Ambientes cósmicos desbloqueáveis', hint:'Toque em um fundo para equipar.', accent:'#70a1ff', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+        return { subtitle:'Ambientes cósmicos desbloqueáveis', hint:'Toque em um fundo para equipar.', accent:'#70a1ff', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:320 };
       case 'stats':
-        return { subtitle:'Seu desempenho, progresso e marcos', hint:'Use esta tela para acompanhar sua evolução.', accent:'#ffd32a', width:620, stageY:0.10, chipY:0.092, chipW:300, footerW:320 };
+        return { subtitle:'Seu desempenho, progresso e marcos', hint:'Use esta tela para acompanhar sua evolução.', accent:'#ffd32a', width:620, stageY:mobile?0.128:0.10, chipY:mobile?0.101:0.092, chipW:mobile?240:300, footerW:320 };
       case 'settings':
-        return { subtitle:'Conta, áudio, instalação e preferências', hint:'Tudo o que muda o app fica aqui.', accent:'#a0a0c0', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:260 };
+        return { subtitle:'Conta, áudio, instalação e preferências', hint:'Tudo o que muda o app fica aqui.', accent:'#a0a0c0', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:260 };
       case 'ranking':
-        return { subtitle:'Posição atual, rival imediato e metas', hint:'Jogue mais uma para subir.', accent:'#ff6b9d', width:null, stageY:0.13, chipY:0.0, chipW:0, footerW:0, hideChip:true, hideFooter:true };
+        return { subtitle:'Posição atual, rival imediato e metas', hint:'Jogue mais uma para subir.', accent:'#ff6b9d', width:null, stageY:mobile?0.145:0.13, chipY:0.0, chipW:0, footerW:0, hideChip:true, hideFooter:true };
       case 'career':
-        return { subtitle:'XP, títulos e metas de longo prazo', hint:'Progressão sem afetar a justiça competitiva.', accent:'#ffd32a', width:440, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+        return { subtitle:'XP, títulos e metas de longo prazo', hint:'Progressão sem afetar a justiça competitiva.', accent:'#ffd32a', width:440, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?245:320, footerW:320 };
       case 'login':
-        return { subtitle:'Entre para salvar e disputar o ranking', hint:'Sua conta sincroniza nickname e recorde.', accent:'#00f5d4', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+        return { subtitle:'Entre para salvar e disputar o ranking', hint:'Sua conta sincroniza nickname e recorde.', accent:'#00f5d4', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:320 };
       case 'nickname':
       case 'changeNickname':
-        return { subtitle:'Defina sua identidade competitiva', hint:'Seu apelido aparece no ranking global.', accent:'#00f5d4', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+        return { subtitle:'Defina sua identidade competitiva', hint:'Seu apelido aparece no ranking global.', accent:'#00f5d4', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:320 };
       case 'confirmDelete':
-        return { subtitle:'Ação irreversível', hint:'Revise antes de apagar seus dados.', accent:'#ff4757', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:300 };
+        return { subtitle:'Ação irreversível', hint:'Revise antes de apagar seus dados.', accent:'#ff4757', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:300 };
       case 'installHelp':
-        return { subtitle:'Transforme o jogo em app', hint:'Instalar reduz fricção de retorno.', accent:'#7bed9f', width:380, stageY:0.11, chipY:0.092, chipW:300, footerW:320 };
+        return { subtitle:'Transforme o jogo em app', hint:'Instalar reduz fricção de retorno.', accent:'#7bed9f', width:380, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?240:300, footerW:320 };
       case 'debug':
-        return { subtitle:'Ferramentas internas de validação', hint:'Use para testar sem quebrar o fluxo real.', accent:'#00f5d4', width:720, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
+        return { subtitle:'Ferramentas internas de validação', hint:'Use para testar sem quebrar o fluxo real.', accent:'#00f5d4', width:720, stageY:mobile?0.135:0.11, chipY:mobile?0.102:0.092, chipW:mobile?250:320, footerW:320 };
       default:
         return null;
     }
@@ -78,8 +83,9 @@
 
   function drawSecondarySubheader(meta){
     if (!meta || meta.hideChip) return;
-    const chipW = Math.min(W*0.68, meta.chipW || 320);
-    const chipH = 24;
+    const mobile = isSecondaryHeaderCompactMobile();
+    const chipW = Math.min(mobile ? W*0.74 : W*0.68, meta.chipW || 320);
+    const chipH = mobile ? 22 : 24;
     const x = (W - chipW) / 2;
     const y = H * (meta.chipY || 0.092);
 
@@ -98,7 +104,7 @@
     X.stroke();
 
     X.fillStyle = '#ffffff';
-    X.font = '11px -apple-system, system-ui, sans-serif';
+    X.font = (mobile ? '10px -apple-system, system-ui, sans-serif' : '11px -apple-system, system-ui, sans-serif');
     X.textAlign = 'center';
     X.textBaseline = 'middle';
     X.fillText(meta.subtitle, x + chipW/2, y + chipH/2 + 0.5);

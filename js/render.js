@@ -2504,12 +2504,6 @@ function drawSkinsMenu(){
   X.fillText('SKINS',W/2,H*0.06);
   X.shadowBlur=0;
 
-  // Counter
-  X.fillStyle='rgba(255,255,255,0.5)';
-  X.font='12px -apple-system, system-ui, sans-serif';
-  const totalSkins=Object.keys(SKINS).length;
-  X.fillText(unlockedSkins.length+' / '+totalSkins+' DESBLOQUEADAS',W/2,H*0.06+22);
-
   drawBackBtn();
 
   const rarities=['common','rare','legendary','stellar'];
@@ -2609,11 +2603,6 @@ function drawBackgroundsMenu(){
   X.shadowColor='#b0b0ff';X.shadowBlur=15;
   X.fillText('FUNDOS',W/2,H*0.06);
   X.shadowBlur=0;
-
-  X.fillStyle='rgba(255,255,255,0.5)';
-  X.font='12px -apple-system, system-ui, sans-serif';
-  const totalBgs=Object.keys(BACKGROUNDS).length;
-  X.fillText(unlockedBgs.length+' / '+totalBgs+' DESBLOQUEADOS',W/2,H*0.06+22);
 
   drawBackBtn();
 
@@ -4038,10 +4027,6 @@ function drawDebugMenu(){
   X.shadowColor='#c084fc'; X.shadowBlur=15;
   X.fillText('🧪 DEBUG / TESTES', W/2, H*0.06);
   X.shadowBlur=0;
-
-  X.fillStyle='rgba(255,255,255,0.5)';
-  X.font='11px -apple-system, system-ui, sans-serif';
-  X.fillText('Ferramentas locais para validar fundo, áudio e desbloqueios rápido', W/2, H*0.09);
 
   drawBackBtn();
 

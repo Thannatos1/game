@@ -4,20 +4,6 @@
   const _origGetMenuScrollViewport = typeof getMenuScrollViewport === 'function' ? getMenuScrollViewport : null;
   const _origDrawMenuUI = typeof drawMenuUI === 'function' ? drawMenuUI : null;
 
-
-  function isCompactMobileMenu(){
-    try {
-      return H > W && Math.min(W, H) <= 900;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function getSecondaryFooterBottomInset(){
-    if (isCompactMobileMenu()) return 74;
-    return 32;
-  }
-
   function getSecondaryMeta(){
     switch(menuScreen){
       case 'skins':
@@ -124,7 +110,7 @@
     const chipW = Math.min(W*0.72, meta.footerW || 330);
     const chipH = 24;
     const x = (W - chipW) / 2;
-    const y = H - getSecondaryFooterBottomInset();
+    const y = H - 32;
 
     X.save();
     X.globalAlpha = 0.62;
@@ -181,6 +167,105 @@
   function getContentRect(width){
     const w = Math.min(W-28, width);
     return { x:(W-w)/2, w };
+  }
+
+  function getBackgroundsScrollViewport(){
+    const meta = getSecondaryMeta() || { width:380, stageY:0.11 };
+    const rect = getStageRect(meta);
+    const sideInset = Math.max(10, Math.min(18, rect.w * 0.04));
+    const top = rect.y + 72;
+    const bottom = Math.min(rect.y + rect.h - 44, H - 42);
+    return {
+      x: rect.x + sideInset,
+      w: rect.w - sideInset*2,
+      top,
+      bottom
+    };
+  }
+
+  function beginPanelScrollClip(viewport){
+    if(!viewport) return null;
+    X.save();
+    X.beginPath();
+    roundRect(viewport.x, viewport.top, viewport.w, viewport.bottom - viewport.top, 14);
+    X.clip();
+    X.translate(0, menuScrollY);
+    return viewport;
+  }
+
+  function endPanelScrollClip(){
+    X.restore();
+  }
+
+  function drawPanelScrollShell(viewport, accent){
+    if(!viewport) return;
+    X.save();
+    X.globalAlpha = 0.95;
+    const bg = X.createLinearGradient(viewport.x, viewport.top, viewport.x, viewport.bottom);
+    bg.addColorStop(0, 'rgba(3,6,22,0.36)');
+    bg.addColorStop(1, 'rgba(2,4,18,0.56)');
+    X.fillStyle = bg;
+    roundRect(viewport.x, viewport.top, viewport.w, viewport.bottom - viewport.top, 14);
+    X.fill();
+
+    X.strokeStyle = 'rgba(255,255,255,0.06)';
+    X.lineWidth = 1;
+    roundRect(viewport.x, viewport.top, viewport.w, viewport.bottom - viewport.top, 14);
+    X.stroke();
+
+    X.strokeStyle = accent || '#70a1ff';
+    X.globalAlpha = 0.20;
+    X.lineWidth = 1.1;
+    roundRect(viewport.x + 1, viewport.top + 1, viewport.w - 2, viewport.bottom - viewport.top - 2, 13);
+    X.stroke();
+    X.globalAlpha = 1;
+    X.restore();
+  }
+
+  function drawPanelScrollBar(viewport, color){
+    if(!viewport || menuScrollMinY >= -2) return;
+    const trackX = viewport.x + viewport.w - 7;
+    const trackY = viewport.top + 8;
+    const trackH = viewport.bottom - viewport.top - 16;
+    const viewportH = viewport.bottom - viewport.top;
+    const contentH = viewportH - menuScrollMinY;
+    const thumbH = Math.max(34, trackH * (viewportH / contentH));
+    const progress = (-menuScrollY) / Math.max(1, -menuScrollMinY);
+    const thumbY = trackY + (trackH - thumbH) * progress;
+
+    X.save();
+    X.globalAlpha = 0.16;
+    X.fillStyle = '#ffffff';
+    roundRect(trackX, trackY, 3, trackH, 2);
+    X.fill();
+
+    X.globalAlpha = 0.72;
+    X.fillStyle = color || '#70a1ff';
+    roundRect(trackX, thumbY, 3, thumbH, 2);
+    X.fill();
+    X.globalAlpha = 1;
+    X.restore();
+  }
+
+  function drawPanelScrollFades(viewport){
+    if(!viewport || menuScrollMinY >= -2) return;
+    const fadeH = 22;
+    X.save();
+    if(menuScrollY < -1){
+      const tg = X.createLinearGradient(0, viewport.top, 0, viewport.top + fadeH);
+      tg.addColorStop(0, 'rgba(3,4,20,0.96)');
+      tg.addColorStop(1, 'rgba(3,4,20,0)');
+      X.fillStyle = tg;
+      X.fillRect(viewport.x, viewport.top, viewport.w, fadeH);
+    }
+    if(menuScrollY > menuScrollMinY + 1){
+      const bg = X.createLinearGradient(0, viewport.bottom - fadeH, 0, viewport.bottom);
+      bg.addColorStop(0, 'rgba(3,4,20,0)');
+      bg.addColorStop(1, 'rgba(3,4,20,0.96)');
+      X.fillStyle = bg;
+      X.fillRect(viewport.x, viewport.bottom - fadeH, viewport.w, fadeH);
+    }
+    X.restore();
   }
 
   // Re-layout SKINS to fit the centered shell instead of the full screen width.
@@ -417,18 +502,116 @@
     };
   }
 
+
+  if (typeof drawBackgroundsMenu === 'function') {
+    drawBackgroundsMenu = function(){
+      X.textAlign='center'; X.textBaseline='middle';
+
+      X.fillStyle='#e0e0ff';
+      X.font='bold 30px -apple-system, system-ui, sans-serif';
+      X.shadowColor='#b0b0ff'; X.shadowBlur=15;
+      X.fillText('FUNDOS',W/2,H*0.06);
+      X.shadowBlur=0;
+
+      drawBackBtn();
+
+      const viewport = getBackgroundsScrollViewport();
+      drawPanelScrollShell(viewport, '#70a1ff');
+
+      const itemW = viewport.w - 14;
+      const itemH = 76;
+      const gap = 10;
+      const startX = viewport.x + 7;
+      const contentStartY = viewport.top + 8;
+      let curY = contentStartY;
+
+      beginPanelScrollClip(viewport);
+
+      for(const bgKey in BACKGROUNDS){
+        const bg = BACKGROUNDS[bgKey];
+        const isUnlocked = unlockedBgs.includes(bgKey);
+        const isSelected = selectedBg === bgKey;
+        const screenY = curY + menuScrollY;
+
+        X.save();
+        X.beginPath();
+        roundRect(startX, curY, itemW, itemH, 10);
+        X.clip();
+
+        if(isUnlocked){
+          drawMiniBg(bg.type, startX, curY, itemW, itemH);
+        } else {
+          X.fillStyle = '#0a0a18';
+          X.fillRect(startX, curY, itemW, itemH);
+        }
+        X.restore();
+
+        X.strokeStyle = isSelected ? '#ffd32a' : (isUnlocked ? '#70a1ff' : '#444');
+        X.lineWidth = isSelected ? 2.4 : 1.3;
+        if(isSelected){ X.shadowColor='#ffd32a'; X.shadowBlur=10; }
+        roundRect(startX, curY, itemW, itemH, 10);
+        X.stroke();
+        X.shadowBlur=0;
+
+        X.fillStyle='rgba(0,0,0,0.58)';
+        roundRect(startX, curY + itemH - 22, itemW, 22, 0);
+        X.fill();
+
+        X.fillStyle=isUnlocked ? '#fff' : 'rgba(255,255,255,0.42)';
+        X.font='bold 12px -apple-system, system-ui, sans-serif';
+        X.textAlign='center';
+        X.textBaseline='middle';
+        X.fillText(bg.name.toUpperCase(), startX + itemW/2, curY + itemH - 10);
+
+        if(bg.masterpiece){
+          X.fillStyle='rgba(255,215,120,0.92)';
+          X.font='bold 10px -apple-system, system-ui, sans-serif';
+          X.textAlign='left';
+          X.fillText('✦ OBRA-PRIMA', startX + 10, curY + 11);
+        }
+
+        if(!isUnlocked){
+          X.fillStyle='rgba(255,255,255,0.56)';
+          X.font='26px sans-serif';
+          X.textAlign='center';
+          X.fillText('🔒', startX + itemW/2, curY + itemH/2 - 12);
+
+          X.fillStyle=bg.masterpiece ? 'rgba(255,220,140,0.80)' : 'rgba(255,255,255,0.52)';
+          X.font=bg.masterpiece ? 'bold 9px -apple-system, system-ui, sans-serif' : '11px -apple-system, system-ui, sans-serif';
+          const unlockLabel = (typeof getBackgroundUnlockLabel === 'function') ? getBackgroundUnlockLabel(bgKey) : (bg.unlock + ' pts');
+          X.fillText(unlockLabel, startX + itemW/2, curY + itemH/2 + 12);
+        } else {
+          menuBtnAreas.push({
+            x:startX, y:screenY, w:itemW, h:itemH,
+            action:()=>{ selectedBg=bgKey; saveData(); }
+          });
+        }
+
+        curY += itemH + gap;
+      }
+
+      endPanelScrollClip();
+      setMenuScrollBounds(contentStartY, curY, viewport);
+      drawPanelScrollBar(viewport, '#70a1ff');
+      drawPanelScrollFades(viewport);
+    };
+  }
+
   isMenuScreenScrollable = function(){
     const baseScrollable = _origIsMenuScreenScrollable ? _origIsMenuScreenScrollable() : false;
-    return baseScrollable || menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking';
+    return baseScrollable || menuScreen === 'backgrounds' || menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking';
   };
 
   getMenuScrollViewport = function(){
+    if(menuScreen === 'backgrounds'){
+      return getBackgroundsScrollViewport();
+    }
     if(_origGetMenuScrollViewport){
       const vp = _origGetMenuScrollViewport();
       if(vp) return vp;
     }
     if(menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking'){
-      return { top:H*0.135, bottom:H-(isCompactMobileMenu()?72:18) };
+      return { top:H*0.135, bottom:H-18 };
     }
     return null;
   };

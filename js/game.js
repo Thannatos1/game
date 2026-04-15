@@ -204,11 +204,26 @@ function genAsteroidShape(){
   return pts;
 }
 
+
+function getGameplayCameraAnchor(isFlying){
+  const mobilePortrait = H > W && Math.min(W, H) <= 900;
+  if (mobilePortrait) {
+    return { x: 0.5, y: isFlying ? 0.66 : 0.60 };
+  }
+  return { x: 0.5, y: 0.5 };
+}
+
+function getGameplayStartNodePos(){
+  const anchor = getGameplayCameraAnchor(false);
+  return { x: W * anchor.x, y: H * anchor.y };
+}
+
 function initNodes(){
   nodes=[]; asteroids=[];
+  const start = getGameplayStartNodePos();
   // Starting node
   nodes.push({
-    x:W/2,y:H/2,baseX:W/2,baseY:H/2,tier:'medium',pts:0,label:'',
+    x:start.x,y:start.y,baseX:start.x,baseY:start.y,tier:'medium',pts:0,label:'',
     colorIdx:'medium',nodeR:NODE_R,captureR:55,pulse:0,
     captured:true,passed:true,moving:false,mSpeed:0,mAngle:0,mRadius:0,
     disappearing:false,disappearTimer:0,visible:true,branchGroup:-1
@@ -237,9 +252,10 @@ function reset(){
   ball.orbitRadius=44;ball.orbitDir=1;
   ball.vx=0;ball.vy=0;ball.trail=[];ball.glow=0;ball.squash=1;ball.speed=0;
   const n=nodes[0];
+  const anchor = getGameplayCameraAnchor(false);
   ball.x=n.x+Math.cos(ball.angle)*ball.orbitRadius;
   ball.y=n.y+Math.sin(ball.angle)*ball.orbitRadius;
-  cam.x=n.x-W/2;cam.y=n.y-H/2;cam.tx=cam.x;cam.ty=cam.y;
+  cam.x=n.x-W*anchor.x;cam.y=n.y-H*anchor.y;cam.tx=cam.x;cam.ty=cam.y;
   cam.zoom=1;cam.tz=1;
 }
 
@@ -516,7 +532,9 @@ function isPauseBtnTap(x, y) {
 }
 
 function isMuteBtnTap(x, y) {
-  return false;
+  const bx = W - MUTE_BTN.margin - PAUSE_BTN.size - 8 - MUTE_BTN.size;
+  const by = MUTE_BTN.margin;
+  return x >= bx && x <= bx + MUTE_BTN.size && y >= by && y <= by + MUTE_BTN.size;
 }
 
 // Menu button areas
@@ -926,10 +944,13 @@ function update(dt){
 
   // Camera
   if(ball.orbiting){
-    cam.tx=nodes[ball.currentNode].x-W/2;
-    cam.ty=nodes[ball.currentNode].y-H/2;
+    const anchor = getGameplayCameraAnchor(false);
+    cam.tx=nodes[ball.currentNode].x-W*anchor.x;
+    cam.ty=nodes[ball.currentNode].y-H*anchor.y;
   } else {
-    cam.tx=ball.x-W/2;cam.ty=ball.y-H/2;
+    const anchor = getGameplayCameraAnchor(true);
+    cam.tx=ball.x-W*anchor.x;
+    cam.ty=ball.y-H*anchor.y;
   }
   cam.x+=(cam.tx-cam.x)*4*dt;
   cam.y+=(cam.ty-cam.y)*4*dt;

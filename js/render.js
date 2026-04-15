@@ -2898,6 +2898,20 @@ function drawMiniBg(type,x,y,w,h){
   }
 }
 
+function getBackTargetScreen(){
+  if(menuScreen==='debug') return 'settings';
+  if(menuScreen==='changeNickname') return 'settings';
+  if(menuScreen==='confirmDelete') return 'settings';
+  if(menuScreen==='installHelp') return 'settings';
+  if(menuScreen==='settings') return 'main';
+  if(menuScreen==='skins') return 'main';
+  if(menuScreen==='backgrounds') return 'main';
+  if(menuScreen==='stats') return 'main';
+  if(menuScreen==='ranking') return 'main';
+  if(menuScreen==='nickname') return 'main';
+  return 'main';
+}
+
 function drawBackBtn(){
   const bx=20,by=H*0.05,bw=70,bh=32;
   X.globalAlpha=0.8;
@@ -2914,7 +2928,9 @@ function drawBackBtn(){
   X.globalAlpha=1;
   menuBtnAreas.push({
     x:bx,y:by,w:bw,h:bh,
-    action:()=>{menuScreen='main';}
+    action:()=>{
+      menuScreen=getBackTargetScreen();
+    }
   });
 }
 

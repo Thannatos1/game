@@ -2610,9 +2610,9 @@ function drawBackgroundsMenu(){
   const itemH=80;
   const gap=12;
   const startX=(W-itemW)/2;
-  const contentStartY=H*0.14;
-  let curY=contentStartY;
   const viewport = beginMenuScrollClip();
+  const contentStartY=Math.max(H*0.14, (viewport ? viewport.top + 10 : H*0.14));
+  let curY=contentStartY;
 
   for(const bgKey in BACKGROUNDS){
     const bg=BACKGROUNDS[bgKey];

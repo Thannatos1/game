@@ -214,9 +214,9 @@
       const cols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
       const gridW = cols*(itemSize+gap)-gap;
       const headerX = box.x + 4;
-      const contentStartY=H*0.13;
-      let curY=contentStartY;
       const viewport = beginMenuScrollClip();
+      const contentStartY=Math.max(H*0.13, (viewport ? viewport.top + 10 : H*0.13));
+      let curY=contentStartY;
 
       for(const rarity of rarities){
         const skins=skinsByRarity[rarity];
@@ -316,9 +316,9 @@
       ];
 
       const box = getContentRect(560);
-      const contentStartY = H*0.13;
-      let curY = contentStartY;
       const viewport = beginMenuScrollClip();
+      const contentStartY = Math.max(H*0.13, (viewport ? viewport.top + 10 : H*0.13));
+      let curY = contentStartY;
 
       const cols=2;
       const gap=10;

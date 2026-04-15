@@ -129,68 +129,50 @@
     registerOrbitaGameplayHook('adjustComboWindow', fairnessAdjustComboWindow);
   }
 
-  const _origPlaceBranch = typeof placeBranch === 'function' ? placeBranch : null;
-  placeBranch = function(fromNode, tier, angleOffset){
-    const t = TIERS[tier];
+  function fairnessAdjustPlaceBranchConfig(config){
     const phase = getPhase();
     const mobilePortrait = isMobilePortraitGameplay();
-    const distScale = (mobilePortrait && phase >= 2) ? 0.93 : 1;
-    const angleScale = (mobilePortrait && phase >= 2) ? 0.94 : 1;
-    const baseDist = (220 + Math.min(score * 1.6, 80)) * distScale;
-    const baseAngle = -Math.PI/2 + (angleOffset * angleScale);
+    const phaseNeedsMobileTightening = mobilePortrait && phase >= 2;
 
-    let nx, ny, attempts = 0, distance;
-    do {
-      distance = baseDist * t.distMul + rand(-24, 24);
-      const angle = baseAngle + rand(-0.16, 0.16) * angleScale;
-      nx = fromNode.x + Math.cos(angle) * distance;
-      ny = fromNode.y + Math.sin(angle) * distance;
-      attempts++;
-    } while(
-      attempts < 24 &&
-      (
-        isTooClose(nx, ny, 158) ||
-        !isSpawnInsideMobileSafeZone(nx, ny, fromNode, phase)
-      )
-    );
+    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? 0.93 : 1);
+    config.baseAngle = -Math.PI/2 + (config.angleOffset * (phaseNeedsMobileTightening ? 0.94 : 1));
+    config.distJitterMin = -24;
+    config.distJitterMax = 24;
+    config.angleJitter = 0.16 * (phaseNeedsMobileTightening ? 0.94 : 1);
+    config.minSpacing = 158;
+    config.maxAttempts = 24;
+    config.movingSpeedMin = 1.1;
+    config.movingSpeedMax = 1.9;
+    config.movingRadiusMin = 12;
+    config.movingRadiusMax = 22;
+    config.disappearTimerMin = 3.0;
+    config.disappearTimerMax = 4.4;
+    config.teleportTimerMin = 2.8;
+    config.teleportTimerMax = 4.2;
 
-    let isMoving = false;
-    let isDisappearing = false;
-    let isTeleporting = false;
+    config.hardMoveChance = (!zenMode && phase >= 5 && config.tier === 'hard') ? 0.16 : 0;
+    config.hardDisappearChance = (!zenMode && phase >= 5 && config.tier === 'hard') ? 0.10 : 0;
+    config.hardTeleportChance = (!zenMode && phase >= 6 && config.tier === 'hard') ? 0.12 : 0;
+    config.mediumMoveChance = (!zenMode && phase >= 6 && config.tier === 'medium') ? 0.08 : 0;
 
-    if (!zenMode && tier === 'hard') {
-      if (phase >= 5 && Math.random() < 0.16) isMoving = true;
-      if (phase >= 5 && !isMoving && Math.random() < 0.10) isDisappearing = true;
-      if (phase >= 6 && !isMoving && !isDisappearing && Math.random() < 0.12) isTeleporting = true;
-    } else if (!zenMode && tier === 'medium' && phase >= 6) {
-      if (Math.random() < 0.08) isMoving = true;
+    if (phaseNeedsMobileTightening && config.fromNode) {
+      config.isPositionValid = (x, y) => isSpawnInsideMobileSafeZone(x, y, config.fromNode, phase);
+    } else {
+      config.isPositionValid = null;
     }
 
-    return {
-      x:nx, y:ny, baseX:nx, baseY:ny,
-      tier, pts:t.pts, label:t.label,
-      colorIdx: tier,
-      nodeR: NODE_R * t.sizeMul,
-      captureR: getCaptureR(tier),
-      pulse: rand(0,Math.PI*2),
-      captured:false, passed:false,
-      moving:isMoving,
-      mSpeed:isMoving ? rand(1.1, 1.9) : 0,
-      mAngle:rand(0,Math.PI*2),
-      mRadius:isMoving ? rand(12, 22) : 0,
-      disappearing:isDisappearing,
-      disappearTimer:isDisappearing ? rand(3.0, 4.4) : 0,
-      visible:true,
-      teleporting:isTeleporting,
-      teleportTimer:isTeleporting ? rand(2.8, 4.2) : 0,
-      teleportFlash:0,
-      branchGroup:-1,
-    };
-  };
+    return config;
+  }
+
+  if (typeof registerOrbitaGameplayHook === 'function') {
+    registerOrbitaGameplayHook('adjustPlaceBranchConfig', fairnessAdjustPlaceBranchConfig);
+  }
 
   const _origSpawnBranches = typeof spawnBranches === 'function' ? spawnBranches : null;
-  spawnBranches = function(fromNode, groupId){
-    const phase = getPhase();
+    function fairnessBuildSpawnBranches(payload){
+    const fromNode = payload.fromNode;
+    const groupId = payload.groupId;
+    const phase = payload.phase;
     const branches = [];
 
     if (phase <= 1) {
@@ -264,13 +246,16 @@
       }
     }
 
-    branches.forEach(b => {
-      b.branchGroup = groupId;
-      nodes.push(b);
-    });
-  };
+    payload.branches = branches;
+    payload.handled = true;
+    return payload;
+  }
 
-  const _origChoosePowerupType = typeof choosePowerupType === 'function' ? choosePowerupType : null;
+  if (typeof registerOrbitaGameplayHook === 'function') {
+    registerOrbitaGameplayHook('buildSpawnBranches', fairnessBuildSpawnBranches);
+  }
+
+  const _origChoosePowerupType  const _origChoosePowerupType = typeof choosePowerupType === 'function' ? choosePowerupType : null;
   choosePowerupType = function(){
     const phase = getPhase();
 

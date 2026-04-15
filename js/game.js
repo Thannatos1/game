@@ -8,7 +8,9 @@ const orbitaGameplayHooks = window.__orbitaGameplayHooks || (window.__orbitaGame
   adjustCaptureRadius: [],
   adjustOrbitSpeed: [],
   adjustGravityStrength: [],
-  adjustComboWindow: []
+  adjustComboWindow: [],
+  adjustPlaceBranchConfig: [],
+  buildSpawnBranches: []
 });
 
 function registerOrbitaGameplayHook(name, fn){
@@ -39,19 +41,17 @@ function getCaptureR(tier){
   const ev = (typeof getActiveEvent==='function') ? getActiveEvent() : null;
   if(ev && ev.id==='calm_orbit' && (tier==='easy' || tier==='medium')) r += 6;
   const shrink = zenMode?0:Math.min(score*0.15, 12);
-  const payload = applyOrbitaGameplayHooks('adjustCaptureRadius', {
-    tier,
-    value: Math.max(r - shrink, 28)
-  });
-  return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : Math.max(r - shrink, 28);
+  const baseValue = Math.max(r - shrink, 28);
+  const payload = applyOrbitaGameplayHooks('adjustCaptureRadius', { tier, value: baseValue });
+  return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : baseValue;
 }
 function getOrbitSpeed(){
-  const baseValue = zenMode ? 2.2 : (3.0+score*0.05);
+  const baseValue = zenMode ? 2.2 : 3.0+score*0.05;
   const payload = applyOrbitaGameplayHooks('adjustOrbitSpeed', { value: baseValue });
   return payload && Number.isFinite(Number(payload.value)) ? Number(payload.value) : baseValue;
 }
 function getGravityStrength(){
-  let baseValue = 30; // Always a gentle pull in zen
+  let baseValue = 30; // Always a gentle pull
   if(!zenMode){
     if(score<25) baseValue = 0;
     else baseValue = Math.min((score-25)*1.5,60);
@@ -147,23 +147,62 @@ function isTooClose(x,y,minDist){
 
 function placeBranch(fromNode, tier, angleOffset) {
   const t = TIERS[tier];
-  const baseDist = 220 + Math.min(score*2, 100);
-  const baseAngle = -Math.PI/2 + angleOffset;
+  const phase = getPhase();
+  let config = {
+    fromNode,
+    tier,
+    angleOffset,
+    phase,
+    t,
+    baseDist: 220 + Math.min(score*2, 100),
+    baseAngle: -Math.PI/2 + angleOffset,
+    distJitterMin: -40,
+    distJitterMax: 40,
+    angleJitter: 0.25,
+    minSpacing: 150,
+    maxAttempts: 25,
+    hardMoveChance: (!zenMode && phase>=5 && tier!=='easy') ? 0.28 : 0,
+    hardDisappearChance: (!zenMode && phase>=5 && tier==='hard') ? 0.18 : 0,
+    hardTeleportChance: (!zenMode && phase>=6 && tier!=='easy') ? 0.22 : 0,
+    mediumMoveChance: 0,
+    movingSpeedMin: 1.2,
+    movingSpeedMax: 2.5,
+    movingRadiusMin: 15,
+    movingRadiusMax: 30,
+    disappearTimerMin: 2.5,
+    disappearTimerMax: 4,
+    teleportTimerMin: 2,
+    teleportTimerMax: 4,
+    isPositionValid: null
+  };
+  config = applyOrbitaGameplayHooks('adjustPlaceBranchConfig', config);
 
   let nx, ny, attempts=0, distance;
   do {
-    // More random distance variation per attempt
-    distance = baseDist * t.distMul + rand(-40, 40);
-    const angle = baseAngle + rand(-0.25, 0.25);
+    distance = config.baseDist * t.distMul + rand(config.distJitterMin, config.distJitterMax);
+    const angle = config.baseAngle + rand(-config.angleJitter, config.angleJitter);
     nx = fromNode.x + Math.cos(angle) * distance;
     ny = fromNode.y + Math.sin(angle) * distance;
     attempts++;
-  } while(attempts<25 && isTooClose(nx,ny,150));
+  } while(
+    attempts < config.maxAttempts &&
+    (
+      isTooClose(nx, ny, config.minSpacing) ||
+      (typeof config.isPositionValid === 'function' && !config.isPositionValid(nx, ny))
+    )
+  );
 
-  const phase = getPhase();
-  const isMoving = !zenMode && phase>=5 && tier!=='easy' && Math.random()<0.28;
-  const isDisappearing = !zenMode && phase>=5 && tier==='hard' && !isMoving && Math.random()<0.18;
-  const isTeleporting = !zenMode && phase>=6 && tier!=='easy' && !isMoving && !isDisappearing && Math.random()<0.22;
+  let isMoving = false;
+  let isDisappearing = false;
+  let isTeleporting = false;
+
+  if (!zenMode && tier === 'hard') {
+    if (phase >= 5 && Math.random() < config.hardMoveChance) isMoving = true;
+    if (phase >= 5 && !isMoving && Math.random() < config.hardDisappearChance) isDisappearing = true;
+    if (phase >= 6 && !isMoving && !isDisappearing && Math.random() < config.hardTeleportChance) isTeleporting = true;
+  } else if (!zenMode && tier === 'medium' && phase >= 6) {
+    if (Math.random() < config.mediumMoveChance) isMoving = true;
+  }
 
   return {
     x:nx, y:ny, baseX:nx, baseY:ny,
@@ -174,14 +213,14 @@ function placeBranch(fromNode, tier, angleOffset) {
     pulse: rand(0,Math.PI*2),
     captured:false, passed:false,
     moving:isMoving,
-    mSpeed:isMoving?rand(1.2,2.5):0,
+    mSpeed:isMoving?rand(config.movingSpeedMin, config.movingSpeedMax):0,
     mAngle:rand(0,Math.PI*2),
-    mRadius:isMoving?rand(15,30):0,
+    mRadius:isMoving?rand(config.movingRadiusMin, config.movingRadiusMax):0,
     disappearing:isDisappearing,
-    disappearTimer:isDisappearing?rand(2.5,4):0,
+    disappearTimer:isDisappearing?rand(config.disappearTimerMin, config.disappearTimerMax):0,
     visible:true,
     teleporting:isTeleporting,
-    teleportTimer:isTeleporting?rand(2,4):0,
+    teleportTimer:isTeleporting?rand(config.teleportTimerMin, config.teleportTimerMax):0,
     teleportFlash:0,
     branchGroup:-1,
   };
@@ -189,45 +228,57 @@ function placeBranch(fromNode, tier, angleOffset) {
 
 function spawnBranches(fromNode, groupId) {
   const phase = getPhase();
-  const branches = [];
+  let branches = [];
+  const payload = applyOrbitaGameplayHooks('buildSpawnBranches', {
+    fromNode,
+    groupId,
+    phase,
+    score,
+    branches,
+    handled: false
+  });
 
-  if (phase <= 1) {
-    // Phase 1: 2 nodes well separated
-    branches.push(placeBranch(fromNode, 'easy', rand(-0.9,-0.5)));
-    branches.push(placeBranch(fromNode, 'medium', rand(0.5,0.9)));
-  } else if (phase <= 2) {
-    // Phase 2: 2-3 choices
-    branches.push(placeBranch(fromNode, 'easy', rand(-1.0,-0.5)));
-    branches.push(placeBranch(fromNode, 'medium', rand(0.5,1.0)));
-    if (Math.random()<0.3) branches.push(placeBranch(fromNode, 'hard', rand(-0.25,0.25)));
-  } else if (phase <= 3) {
-    // Phase 3: 3 choices in distinct directions
-    branches.push(placeBranch(fromNode, 'easy', rand(-1.1,-0.6)));
-    branches.push(placeBranch(fromNode, 'medium', rand(-0.25,0.25)));
-    branches.push(placeBranch(fromNode, 'hard', rand(0.6,1.1)));
+  if (payload && payload.handled && Array.isArray(payload.branches)) {
+    branches = payload.branches.slice();
   } else {
-    // Phase 4-5: 3 choices with possible gold
-    branches.push(placeBranch(fromNode, 'easy', rand(-1.1,-0.6)));
-    branches.push(placeBranch(fromNode, 'hard', rand(0.6,1.1)));
-    if (Math.random()<0.25) {
-      branches.push(placeBranch(fromNode, 'gold', rand(-0.25,0.25)));
-    } else {
+    if (phase <= 1) {
+      // Phase 1: 2 nodes well separated
+      branches.push(placeBranch(fromNode, 'easy', rand(-0.9,-0.5)));
+      branches.push(placeBranch(fromNode, 'medium', rand(0.5,0.9)));
+    } else if (phase <= 2) {
+      // Phase 2: 2-3 choices
+      branches.push(placeBranch(fromNode, 'easy', rand(-1.0,-0.5)));
+      branches.push(placeBranch(fromNode, 'medium', rand(0.5,1.0)));
+      if (Math.random()<0.3) branches.push(placeBranch(fromNode, 'hard', rand(-0.25,0.25)));
+    } else if (phase <= 3) {
+      // Phase 3: 3 choices in distinct directions
+      branches.push(placeBranch(fromNode, 'easy', rand(-1.1,-0.6)));
       branches.push(placeBranch(fromNode, 'medium', rand(-0.25,0.25)));
+      branches.push(placeBranch(fromNode, 'hard', rand(0.6,1.1)));
+    } else {
+      // Phase 4-5: 3 choices with possible gold
+      branches.push(placeBranch(fromNode, 'easy', rand(-1.1,-0.6)));
+      branches.push(placeBranch(fromNode, 'hard', rand(0.6,1.1)));
+      if (Math.random()<0.25) {
+        branches.push(placeBranch(fromNode, 'gold', rand(-0.25,0.25)));
+      } else {
+        branches.push(placeBranch(fromNode, 'medium', rand(-0.25,0.25)));
+      }
     }
-  }
 
-  // Spawn asteroids for phase 4+ (not in zen)
-  if (phase >= 4 && !zenMode) {
-    for (const b of branches) {
-      if (b.tier !== 'easy' && Math.random() < ((b.moving || b.disappearing || b.teleporting) ? 0.2 : 0.4)) {
-        const mx = (fromNode.x+b.x)/2, my = (fromNode.y+b.y)/2;
-        const na = Math.random() < 0.7 ? 1 : 2;
-        for(let i=0;i<na;i++){
-          asteroids.push({
-            x:mx+rand(-50,50), y:my+rand(-50,50),
-            r:rand(8,16), rot:rand(0,Math.PI*2), rotSpd:rand(-2,2),
-            vertices:genAsteroidShape()
-          });
+    // Spawn asteroids for phase 4+ (not in zen)
+    if (phase >= 4 && !zenMode) {
+      for (const b of branches) {
+        if (b.tier !== 'easy' && Math.random() < ((b.moving || b.disappearing || b.teleporting) ? 0.2 : 0.4)) {
+          const mx = (fromNode.x+b.x)/2, my = (fromNode.y+b.y)/2;
+          const na = Math.random() < 0.7 ? 1 : 2;
+          for(let i=0;i<na;i++){
+            asteroids.push({
+              x:mx+rand(-50,50), y:my+rand(-50,50),
+              r:rand(8,16), rot:rand(0,Math.PI*2), rotSpd:rand(-2,2),
+              vertices:genAsteroidShape()
+            });
+          }
         }
       }
     }
@@ -242,11 +293,26 @@ function genAsteroidShape(){
   return pts;
 }
 
+
+function getGameplayCameraAnchor(isFlying){
+  const mobilePortrait = H > W && Math.min(W, H) <= 900;
+  if (mobilePortrait) {
+    return { x: 0.5, y: isFlying ? 0.66 : 0.60 };
+  }
+  return { x: 0.5, y: 0.5 };
+}
+
+function getGameplayStartNodePos(){
+  const anchor = getGameplayCameraAnchor(false);
+  return { x: W * anchor.x, y: H * anchor.y };
+}
+
 function initNodes(){
   nodes=[]; asteroids=[];
+  const start = getGameplayStartNodePos();
   // Starting node
   nodes.push({
-    x:W/2,y:H/2,baseX:W/2,baseY:H/2,tier:'medium',pts:0,label:'',
+    x:start.x,y:start.y,baseX:start.x,baseY:start.y,tier:'medium',pts:0,label:'',
     colorIdx:'medium',nodeR:NODE_R,captureR:55,pulse:0,
     captured:true,passed:true,moving:false,mSpeed:0,mAngle:0,mRadius:0,
     disappearing:false,disappearTimer:0,visible:true,branchGroup:-1
@@ -275,9 +341,10 @@ function reset(){
   ball.orbitRadius=44;ball.orbitDir=1;
   ball.vx=0;ball.vy=0;ball.trail=[];ball.glow=0;ball.squash=1;ball.speed=0;
   const n=nodes[0];
+  const anchor = getGameplayCameraAnchor(false);
   ball.x=n.x+Math.cos(ball.angle)*ball.orbitRadius;
   ball.y=n.y+Math.sin(ball.angle)*ball.orbitRadius;
-  cam.x=n.x-W/2;cam.y=n.y-H/2;cam.tx=cam.x;cam.ty=cam.y;
+  cam.x=n.x-W*anchor.x;cam.y=n.y-H*anchor.y;cam.tx=cam.x;cam.ty=cam.y;
   cam.zoom=1;cam.tz=1;
 }
 
@@ -545,12 +612,19 @@ function collectPowerup(p){
 
 // Pause button area (top right corner)
 const PAUSE_BTN = { size: 44, margin: 16 };
+const MUTE_BTN = { size: 44, margin: 16 };
+
 function isPauseBtnTap(x, y) {
   const bx = W - PAUSE_BTN.margin - PAUSE_BTN.size;
   const by = PAUSE_BTN.margin;
   return x >= bx && x <= bx + PAUSE_BTN.size && y >= by && y <= by + PAUSE_BTN.size;
 }
 
+function isMuteBtnTap(x, y) {
+  const bx = W - MUTE_BTN.margin - PAUSE_BTN.size - 8 - MUTE_BTN.size;
+  const by = MUTE_BTN.margin;
+  return x >= bx && x <= bx + MUTE_BTN.size && y >= by && y <= by + MUTE_BTN.size;
+}
 
 // Menu button areas
 let menuBtnAreas = [];
@@ -619,6 +693,12 @@ function quickRestartGame(source='retry'){
 
 function handleTap(x, y){
   initAudio();
+
+  // Mute button works in any state
+  if((state===ST.PLAY||state===ST.PAUSE||state===ST.MENU||state===ST.DEAD) && isMuteBtnTap(x, y)){
+    toggleMute();
+    return;
+  }
 
   // Check pause button tap during play
   if(state===ST.PLAY && isPauseBtnTap(x, y)){
@@ -955,10 +1035,13 @@ function update(dt){
 
   // Camera
   if(ball.orbiting){
-    cam.tx=nodes[ball.currentNode].x-W/2;
-    cam.ty=nodes[ball.currentNode].y-H/2;
+    const anchor = getGameplayCameraAnchor(false);
+    cam.tx=nodes[ball.currentNode].x-W*anchor.x;
+    cam.ty=nodes[ball.currentNode].y-H*anchor.y;
   } else {
-    cam.tx=ball.x-W/2;cam.ty=ball.y-H/2;
+    const anchor = getGameplayCameraAnchor(true);
+    cam.tx=ball.x-W*anchor.x;
+    cam.ty=ball.y-H*anchor.y;
   }
   cam.x+=(cam.tx-cam.x)*4*dt;
   cam.y+=(cam.ty-cam.y)*4*dt;

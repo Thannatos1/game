@@ -797,15 +797,31 @@ function draw(){
       if(nodes[j].captured){parent=nodes[j];break;}
     }
     if(!parent)continue;
-    const ax=parent.x-cam.x,ay=parent.y-cam.y;
-    const bx=n.x-cam.x,by=n.y-cam.y;
-    if(!n.visible){X.globalAlpha=0.03;}else{X.globalAlpha=0.1;}
 
+    const ax=parent.x-cam.x, ay=parent.y-cam.y;
+    const bx=n.x-cam.x, by=n.y-cam.y;
     const tc=TIERS[n.tier]||TIERS.medium;
+    const dashAlpha=n.visible ? 0.24 : 0.12;
+
+    X.save();
+    X.globalAlpha=dashAlpha*0.5;
+    X.strokeStyle='rgba(255,255,255,0.22)';
+    X.lineWidth=1;
+    X.beginPath();
+    X.moveTo(ax,ay);
+    X.lineTo(bx,by);
+    X.stroke();
+
+    X.globalAlpha=dashAlpha;
     X.strokeStyle=tc.color.main;
-    X.lineWidth=1;X.setLineDash([4,8]);
-    X.beginPath();X.moveTo(ax,ay);X.lineTo(bx,by);X.stroke();
-    X.setLineDash([]);
+    X.lineWidth=1.35;
+    X.setLineDash([5,7]);
+    X.lineDashOffset=-menuT*18;
+    X.beginPath();
+    X.moveTo(ax,ay);
+    X.lineTo(bx,by);
+    X.stroke();
+    X.restore();
   }
   X.globalAlpha=1;
 
@@ -861,20 +877,31 @@ function draw(){
     // Draw the line
     const tc=bestNode?(TIERS[bestNode.tier]||TIERS.medium):TIERS.medium;
     const lineColor=bestNode?tc.color.main:'#ffffff';
-    const lineLen=bestNode?dist(ball.x,ball.y,bestNode.x,bestNode.y):300;
+    const projectedLen=bestNode
+      ? Math.max(56, (dx*(bestNode.x-ball.x) + dy*(bestNode.y-ball.y)) + Math.min(bestNode.captureR*0.35, 20))
+      : 320;
 
     X.save();
-    X.globalAlpha=0.35+Math.sin(menuT*4)*0.1;
+    X.lineCap='round';
+
+    X.globalAlpha=0.16;
+    X.strokeStyle='rgba(255,255,255,0.42)';
+    X.lineWidth=1.15;
+    X.beginPath();
+    X.moveTo(bx+dx*BALL_R,by+dy*BALL_R);
+    X.lineTo(bx+dx*projectedLen,by+dy*projectedLen);
+    X.stroke();
+
+    X.globalAlpha=0.38+Math.sin(menuT*4)*0.1;
     X.strokeStyle=lineColor;
     X.lineWidth=2;
-    X.lineCap='round';
     X.setLineDash([6,8]);
     X.lineDashOffset=-menuT*30;
     X.shadowColor=lineColor;
     X.shadowBlur=8;
     X.beginPath();
     X.moveTo(bx+dx*BALL_R,by+dy*BALL_R);
-    X.lineTo(bx+dx*lineLen,by+dy*lineLen);
+    X.lineTo(bx+dx*projectedLen,by+dy*projectedLen);
     X.stroke();
     X.setLineDash([]);
     X.shadowBlur=0;
@@ -1730,6 +1757,14 @@ function drawMedal(x,y,medal,scale){
   X.fillText(medal.icon,0,2);
 
   X.restore();
+}
+
+function getMenuHeaderLayout(){
+  const topBtnY = 18;
+  const titleY = Math.max(66, H*0.082);
+  const subtitleY = titleY + 22;
+  const contentStartY = Math.max(118, H*0.15);
+  return { topBtnY, titleY, subtitleY, contentStartY };
 }
 
 function drawMuteBtn(){
@@ -2629,15 +2664,16 @@ function drawSkinsMenu(){
 function drawBackgroundsMenu(){
   X.textAlign='center';X.textBaseline='middle';
 
+  const layout = getMenuHeaderLayout();
   X.fillStyle='#e0e0ff';X.font='bold 30px -apple-system, system-ui, sans-serif';
   X.shadowColor='#b0b0ff';X.shadowBlur=15;
-  X.fillText('FUNDOS',W/2,H*0.06);
+  X.fillText('FUNDOS',W/2,layout.titleY);
   X.shadowBlur=0;
 
   X.fillStyle='rgba(255,255,255,0.5)';
   X.font='12px -apple-system, system-ui, sans-serif';
   const totalBgs=Object.keys(BACKGROUNDS).length;
-  X.fillText(unlockedBgs.length+' / '+totalBgs+' DESBLOQUEADOS',W/2,H*0.06+22);
+  X.fillText(unlockedBgs.length+' / '+totalBgs+' DESBLOQUEADOS',W/2,layout.subtitleY);
 
   drawBackBtn();
 
@@ -2645,7 +2681,7 @@ function drawBackgroundsMenu(){
   const itemH=80;
   const gap=12;
   const startX=(W-itemW)/2;
-  const contentStartY=H*0.14;
+  const contentStartY=layout.contentStartY;
   let curY=contentStartY;
   const viewport = beginMenuScrollClip();
 
@@ -2913,7 +2949,8 @@ function getBackTargetScreen(){
 }
 
 function drawBackBtn(){
-  const bx=20,by=H*0.05,bw=70,bh=32;
+  const layout = getMenuHeaderLayout();
+  const bx=20,by=layout.topBtnY,bw=70,bh=32;
   X.globalAlpha=0.8;
   X.fillStyle='rgba(0,0,0,0.6)';
   roundRect(bx,by,bw,bh,8);
@@ -3576,14 +3613,15 @@ function drawSettingsMenu(){
   drawTopStatusBadges();
   X.textAlign='center';X.textBaseline='middle';
 
+  const layout = getMenuHeaderLayout();
   X.fillStyle='#e0e0ff';X.font='bold 28px -apple-system, system-ui, sans-serif';
   X.shadowColor='#a0a0c0';X.shadowBlur=15;
-  X.fillText('⚙ CONFIGURAÇÕES',W/2,H*0.06);
+  X.fillText('⚙ CONFIGURAÇÕES',W/2,layout.titleY);
   X.shadowBlur=0;
 
   drawBackBtn();
 
-  let curY = H*0.14;
+  let curY = layout.contentStartY;
   const contentW = Math.min(W*0.85, 320);
   const contentX = (W-contentW)/2;
 
@@ -3746,9 +3784,10 @@ function drawSettingsMenu(){
 function drawInstallHelpScreen(){
   X.textAlign='center';X.textBaseline='middle';
 
+  const layout = getMenuHeaderLayout();
   X.fillStyle='#e0e0ff';X.font='bold 26px -apple-system, system-ui, sans-serif';
   X.shadowColor='#7bed9f';X.shadowBlur=15;
-  X.fillText('INSTALAR ÓRBITA',W/2,H*0.08);
+  X.fillText('INSTALAR ÓRBITA',W/2,layout.titleY);
   X.shadowBlur=0;
 
   drawBackBtn();
@@ -3756,7 +3795,7 @@ function drawInstallHelpScreen(){
   const cardW=Math.min(W*0.86,340);
   const cardH=Math.min(H*0.62,360);
   const cardX=(W-cardW)/2;
-  const cardY=H*0.16;
+  const cardY=layout.contentStartY;
 
   X.fillStyle='rgba(0,0,0,0.55)';
   roundRect(cardX,cardY,cardW,cardH,14);

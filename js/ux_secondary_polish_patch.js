@@ -7,7 +7,7 @@
   function getSecondaryMeta(){
     switch(menuScreen){
       case 'skins':
-        return { subtitle:'Coleção de pilotos e raridades', hint:'Toque em uma skin para equipar.', accent:'#c084fc', width:560, stageY:0.11, chipY:0.092, chipW:320, footerW:310 };
+        return { subtitle:'Coleção de pilotos e raridades', hint:'Toque em uma skin para equipar.', accent:'#c084fc', width:560, stageY:0.11, chipY:0.092, chipW:320, footerW:350 };
       case 'backgrounds':
         return { subtitle:'Ambientes cósmicos desbloqueáveis', hint:'Toque em um fundo para equipar.', accent:'#70a1ff', width:380, stageY:0.11, chipY:0.092, chipW:320, footerW:320 };
       case 'stats':
@@ -34,11 +34,27 @@
     }
   }
 
+  function getSecondaryLayout(){
+    const titleY = (typeof getMenuHeaderLayout === 'function')
+      ? getMenuHeaderLayout()
+      : { titleY: Math.max(66, H*0.082), subtitleY: Math.max(88, H*0.082 + 22), contentStartY: Math.max(118, H*0.15) };
+    const stageTop = Math.max(titleY.subtitleY + 12, titleY.contentStartY - 6);
+    return {
+      titleY: titleY.titleY,
+      subtitleY: titleY.subtitleY,
+      contentStartY: titleY.contentStartY,
+      stageTop,
+      footerY: H - 32
+    };
+  }
+
   function getStageRect(meta){
+    const layout = getSecondaryLayout();
     const margin = 14;
     const w = meta && meta.width ? Math.min(W - margin*2, meta.width) : (W - margin*2);
-    const y = H * ((meta && meta.stageY) ? meta.stageY : 0.11);
-    return { x:(W-w)/2, y, w, h:H*0.82 };
+    const y = layout.stageTop;
+    const bottomPad = (meta && meta.hideFooter) ? 16 : 46;
+    return { x:(W-w)/2, y, w, h:Math.max(120, H - y - bottomPad) };
   }
 
   function drawSecondaryStage(meta){
@@ -78,10 +94,11 @@
 
   function drawSecondarySubheader(meta){
     if (!meta || meta.hideChip) return;
+    const layout = getSecondaryLayout();
     const chipW = Math.min(W*0.68, meta.chipW || 320);
     const chipH = 24;
     const x = (W - chipW) / 2;
-    const y = H * (meta.chipY || 0.092);
+    const y = layout.subtitleY - 11;
 
     X.save();
     X.globalAlpha = 0.88;
@@ -107,10 +124,11 @@
 
   function drawSecondaryFooter(meta){
     if(!meta || meta.hideFooter) return;
+    const layout = getSecondaryLayout();
     const chipW = Math.min(W*0.72, meta.footerW || 330);
     const chipH = 24;
     const x = (W - chipW) / 2;
-    const y = H - 32;
+    const y = layout.footerY;
 
     X.save();
     X.globalAlpha = 0.62;
@@ -174,16 +192,17 @@
     drawSkinsMenu = function(){
       X.textAlign='center'; X.textBaseline='middle';
 
+      const layout = getSecondaryLayout();
       X.fillStyle='#e0e0ff';
       X.font='bold 30px -apple-system, system-ui, sans-serif';
       X.shadowColor='#b0b0ff'; X.shadowBlur=15;
-      X.fillText('SKINS',W/2,H*0.06);
+      X.fillText('SKINS',W/2,layout.titleY);
       X.shadowBlur=0;
 
       X.fillStyle='rgba(255,255,255,0.5)';
       X.font='12px -apple-system, system-ui, sans-serif';
       const totalSkins=Object.keys(SKINS).length;
-      X.fillText(unlockedSkins.length+' / '+totalSkins+' DESBLOQUEADAS',W/2,H*0.06+22);
+      X.fillText(unlockedSkins.length+' / '+totalSkins+' DESBLOQUEADAS',W/2,layout.subtitleY);
 
       drawBackBtn();
 
@@ -196,7 +215,7 @@
       const cols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
       const gridW = cols*(itemSize+gap)-gap;
       const headerX = box.x + 4;
-      const contentStartY=H*0.13;
+      const contentStartY=layout.contentStartY;
       let curY=contentStartY;
       const viewport = beginMenuScrollClip();
 
@@ -278,10 +297,11 @@
     drawStatsMenu = function(){
       X.textAlign='center'; X.textBaseline='middle';
 
+      const layout = getSecondaryLayout();
       X.fillStyle='#e0e0ff';
       X.font='bold 30px -apple-system, system-ui, sans-serif';
       X.shadowColor='#ffd32a'; X.shadowBlur=15;
-      X.fillText('ESTATÍSTICAS',W/2,H*0.06);
+      X.fillText('ESTATÍSTICAS',W/2,layout.titleY);
       X.shadowBlur=0;
 
       drawBackBtn();
@@ -298,7 +318,7 @@
       ];
 
       const box = getContentRect(560);
-      const contentStartY = H*0.13;
+      const contentStartY = layout.contentStartY;
       let curY = contentStartY;
       const viewport = beginMenuScrollClip();
 
@@ -414,7 +434,8 @@
       if(vp) return vp;
     }
     if(menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking'){
-      return { top:H*0.135, bottom:H-18 };
+      const layout = (typeof getMenuHeaderLayout === 'function') ? getMenuHeaderLayout() : { contentStartY: Math.max(118, H*0.15) };
+      return { top:layout.contentStartY - 10, bottom:H-18 };
     }
     return null;
   };

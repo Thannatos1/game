@@ -161,7 +161,7 @@
 
   function awardCareerFromRun(){
     if (careerRun.awarded) return;
-    careerRun.awarded = True;
+    careerRun.awarded = true;
   }
 
   function finalizeCareerRun(){
@@ -283,16 +283,20 @@
 
   function drawCareerMenu(){
     X.textAlign='center'; X.textBaseline='middle';
+    const layout = (typeof getMenuHeaderLayout === 'function')
+      ? getMenuHeaderLayout()
+      : { titleY: Math.max(66, H*0.082), contentStartY: Math.max(118, H*0.15) };
+
     X.fillStyle='#e0e0ff'; X.font='bold 30px -apple-system, system-ui, sans-serif';
     X.shadowColor='#ffd32a'; X.shadowBlur=16;
-    X.fillText('CARREIRA', W/2, H*0.06);
+    X.fillText('CARREIRA', W/2, layout.titleY);
     X.shadowBlur=0;
 
     drawBackBtn();
 
     const padX = 16;
     const cardW = W - padX*2;
-    let y = H*0.13;
+    let y = layout.contentStartY;
 
     // summary card
     X.fillStyle='rgba(0,0,0,0.60)';

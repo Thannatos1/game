@@ -133,9 +133,45 @@ const DAILY_REWARD_POOL = [
   {type:'bg', key:'galaxy'},
 ];
 
+const SAVE_STORAGE_KEY = 'orbita_save';
+const orbitaSaveHooks = window.__orbitaSaveHooks || (window.__orbitaSaveHooks = { beforeSave: [] });
+
+function registerOrbitaBeforeSaveHook(fn){
+  if (typeof fn !== 'function') return false;
+  if (!orbitaSaveHooks.beforeSave.includes(fn)) {
+    orbitaSaveHooks.beforeSave.push(fn);
+  }
+  return true;
+}
+
+function applyOrbitaBeforeSaveHooks(data){
+  let next = data;
+  for (const hook of orbitaSaveHooks.beforeSave) {
+    try {
+      const result = hook(next);
+      if (result && typeof result === 'object') next = result;
+    } catch(e) {}
+  }
+  return next;
+}
+
+function buildSaveData(){
+  const payload = {
+    best, totalGames, muted, selectedSkin, selectedBg,
+    unlockedSkins, unlockedBgs, totalGoldCaptured, zenUnlocked,
+    totalScoreEver, totalNodesEver, bestComboEver, highestPhase,
+    achievements, musicVol: menuMusicVol, menuMusicVol, gameMusicVol, sfxVol, vibrationOn,
+    dailyMissionState, missionsCompletedTotal
+  };
+  return applyOrbitaBeforeSaveHooks(payload);
+}
+
+window.registerOrbitaBeforeSaveHook = registerOrbitaBeforeSaveHook;
+window.buildOrbitaSaveData = buildSaveData;
+
 // Load saved data
 try {
-  const saved = localStorage.getItem('orbita_save');
+  const saved = localStorage.getItem(SAVE_STORAGE_KEY);
   if (saved) {
     const d = JSON.parse(saved);
     best = d.best || 0;
@@ -165,13 +201,7 @@ try {
 
 function saveData() {
   try {
-    localStorage.setItem('orbita_save', JSON.stringify({
-      best, totalGames, muted, selectedSkin, selectedBg,
-      unlockedSkins, unlockedBgs, totalGoldCaptured, zenUnlocked,
-      totalScoreEver, totalNodesEver, bestComboEver, highestPhase,
-      achievements, musicVol: menuMusicVol, menuMusicVol, gameMusicVol, sfxVol, vibrationOn,
-      dailyMissionState, missionsCompletedTotal
-    }));
+    localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(buildSaveData()));
   } catch(e) {}
 }
 

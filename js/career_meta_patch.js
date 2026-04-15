@@ -60,6 +60,12 @@
 
   function persistCareerMeta(){
     try {
+      if (typeof buildOrbitaSaveData === 'function') {
+        const data = buildOrbitaSaveData();
+        data.careerMeta = careerMeta;
+        localStorage.setItem(CAREER_STORAGE_KEY, JSON.stringify(data));
+        return;
+      }
       const raw = localStorage.getItem(CAREER_STORAGE_KEY);
       const data = raw ? JSON.parse(raw) : {};
       data.careerMeta = careerMeta;
@@ -67,13 +73,14 @@
     } catch(e) {}
   }
 
-  const _origSaveData = typeof saveData === 'function' ? saveData : null;
-  if (_origSaveData) {
-    saveData = function(){
-      const result = _origSaveData.apply(this, arguments);
-      persistCareerMeta();
-      return result;
-    };
+  function attachCareerMetaToSave(data){
+    const next = (data && typeof data === 'object') ? data : {};
+    next.careerMeta = careerMeta;
+    return next;
+  }
+
+  if (typeof registerOrbitaBeforeSaveHook === 'function') {
+    registerOrbitaBeforeSaveHook(attachCareerMetaToSave);
   }
 
   function refreshCareerTitles(){
@@ -161,7 +168,7 @@
 
   function awardCareerFromRun(){
     if (careerRun.awarded) return;
-    careerRun.awarded = true;
+    careerRun.awarded = True;
   }
 
   function finalizeCareerRun(){
@@ -283,20 +290,16 @@
 
   function drawCareerMenu(){
     X.textAlign='center'; X.textBaseline='middle';
-    const layout = (typeof getMenuHeaderLayout === 'function')
-      ? getMenuHeaderLayout()
-      : { titleY: Math.max(66, H*0.082), contentStartY: Math.max(118, H*0.15) };
-
     X.fillStyle='#e0e0ff'; X.font='bold 30px -apple-system, system-ui, sans-serif';
     X.shadowColor='#ffd32a'; X.shadowBlur=16;
-    X.fillText('CARREIRA', W/2, layout.titleY);
+    X.fillText('CARREIRA', W/2, H*0.06);
     X.shadowBlur=0;
 
     drawBackBtn();
 
     const padX = 16;
     const cardW = W - padX*2;
-    let y = layout.contentStartY;
+    let y = H*0.13;
 
     // summary card
     X.fillStyle='rgba(0,0,0,0.60)';
@@ -433,6 +436,7 @@
       menuBtnAreas = [];
       if (menuScreen === 'career') {
         drawCareerMenu();
+        drawMuteBtn();
         return;
       }
       _origDrawMenuUI.apply(this, arguments);

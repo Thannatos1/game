@@ -61,20 +61,16 @@
     return { x:0.5, y:0.5 };
   }
 
-  function isSpawnInsideGameplayView(x, y, fromNode){
+  function isSpawnInsideMobileSafeZone(x, y, fromNode, phase){
     if (!isMobilePortraitGameplay() || !fromNode) return true;
 
     const anchor = getSpawnCameraAnchor();
-    const padX = Math.max(34, W * 0.08);
-    const padTop = Math.max(84, H * 0.10);
-    const padBottom = Math.max(48, H * 0.06);
+    const left = fromNode.x - W * anchor.x + Math.max(20, W * 0.035);
+    const right = fromNode.x + W * (1 - anchor.x) - Math.max(20, W * 0.035);
+    const top = fromNode.y - H * anchor.y + Math.max(42, H * 0.06);
 
-    const left = fromNode.x - W * anchor.x + padX;
-    const right = fromNode.x + W * (1 - anchor.x) - padX;
-    const top = fromNode.y - H * anchor.y + padTop;
-    const bottom = fromNode.y + H * (1 - anchor.y) - padBottom;
-
-    return x >= left && x <= right && y >= top && y <= bottom;
+    const centerBias = phase >= 2 ? Math.max(12, W * 0.02) : 0;
+    return x >= (left + centerBias) && x <= (right - centerBias) && y >= top;
   }
 
   function canPlaceAsteroid(ax, ay, fromNode, targetNode){
@@ -129,22 +125,28 @@
   const _origPlaceBranch = typeof placeBranch === 'function' ? placeBranch : null;
   placeBranch = function(fromNode, tier, angleOffset){
     const t = TIERS[tier];
+    const phase = getPhase();
     const mobilePortrait = isMobilePortraitGameplay();
-    const distScale = mobilePortrait ? 0.82 : 1;
-    const angleScale = mobilePortrait ? 0.82 : 1;
+    const distScale = (mobilePortrait && phase >= 2) ? 0.93 : 1;
+    const angleScale = (mobilePortrait && phase >= 2) ? 0.94 : 1;
     const baseDist = (220 + Math.min(score * 1.6, 80)) * distScale;
     const baseAngle = -Math.PI/2 + (angleOffset * angleScale);
 
     let nx, ny, attempts = 0, distance;
     do {
-      distance = baseDist * t.distMul + rand(mobilePortrait ? -18 : -24, mobilePortrait ? 18 : 24);
+      distance = baseDist * t.distMul + rand(-24, 24);
       const angle = baseAngle + rand(-0.16, 0.16) * angleScale;
       nx = fromNode.x + Math.cos(angle) * distance;
       ny = fromNode.y + Math.sin(angle) * distance;
       attempts++;
-    } while(attempts < 28 && (isTooClose(nx, ny, mobilePortrait ? 146 : 158) || !isSpawnInsideGameplayView(nx, ny, fromNode)));
+    } while(
+      attempts < 24 &&
+      (
+        isTooClose(nx, ny, 158) ||
+        !isSpawnInsideMobileSafeZone(nx, ny, fromNode, phase)
+      )
+    );
 
-    const phase = getPhase();
     let isMoving = false;
     let isDisappearing = false;
     let isTeleporting = false;

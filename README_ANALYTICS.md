@@ -1,4 +1,6 @@
-1. Rode analytics.sql no SQL Editor do Supabase.
-2. Substitua os arquivos js/services.js, js/game.js e js/render.js.
-3. Eventos enviados: app_open, auth_sign_in_click, auth_signed_in, auth_signed_out, nickname_set, game_start, phase_reached, gold_capture, powerup_collected, game_over, new_record, score_submitted.
-4. A fila de analytics usa localStorage para sobreviver a offline/refresh e flush assíncrono para não travar a gameplay.
+1. Se quiser um snapshot unico, rode [analytics.sql](/C:/Users/galil/Downloads/game/analytics.sql:1) no SQL Editor do Supabase.
+2. Se quiser espelhar a organizacao real do Supabase, use os scripts em [sql/01_profiles_rankings_account.sql](/C:/Users/galil/Downloads/game/sql/01_profiles_rankings_account.sql:1), [sql/02_run_sessions.sql](/C:/Users/galil/Downloads/game/sql/02_run_sessions.sql:1), [sql/03_secure_run_progress_and_score_submission.sql](/C:/Users/galil/Downloads/game/sql/03_secure_run_progress_and_score_submission.sql:1), [sql/04_analytics_events_and_views.sql](/C:/Users/galil/Downloads/game/sql/04_analytics_events_and_views.sql:1) e [sql/05_competitive_rankings_json_summary.sql](/C:/Users/galil/Downloads/game/sql/05_competitive_rankings_json_summary.sql:1).
+3. O frontend usa estas RPCs: `set_nickname`, `delete_my_account_data`, `start_run_session`, `update_run_progress`, `submit_score_secure`, `submit_score`, `log_analytics_events`, `get_rankings_competitive`.
+4. Eventos enviados: `app_open`, `auth_sign_in_click`, `auth_signed_in`, `auth_signed_out`, `nickname_set`, `game_start`, `phase_reached`, `gold_capture`, `powerup_collected`, `game_over`, `score_submitted`, `run_progress_checkpoint`.
+5. A fila de analytics usa `localStorage` para sobreviver a offline/refresh e flush assincrono para nao travar a gameplay.
+6. O SQL que veio do Supabase estava correto na ideia, mas o paste tinha blocos duplicados; o repositório agora guarda tanto a versao consolidada quanto a versao separada por responsabilidade.

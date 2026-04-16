@@ -149,7 +149,9 @@ function drawDebugMenu(){
   const halfW=(contentW-gap)/2;
   drawDebugActionBtn(contentX,curY,halfW,36,'▶ NORMAL','#00f5d4',()=>startRun(false,'debug_normal'),false);
   drawDebugActionBtn(contentX+halfW+gap,curY,halfW,36,'☯ ZEN','#7bed9f',()=>startRun(true,'debug_zen'),false);
-  curY += 48;
+  curY += 44;
+  drawDebugActionBtn(contentX,curY,contentW,36,'🧪 TESTE SEM ERRO','#ffd32a',()=>startTestRun('debug_test'),false);
+  curY += 52;
 
   drawDebugSectionTitle(contentX, curY, 'ÁUDIO', '#70a1ff');
   curY += 14;

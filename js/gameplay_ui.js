@@ -58,6 +58,7 @@ function drawPauseScreenModule(){
 
   drawActionBtn(btnX,H*0.58+btnH+12,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
     zenMode=false;
+    testMode=false;
     state=ST.MENU;
     menuScreen='main';
     setMusicVolume(0.80);
@@ -108,7 +109,11 @@ function drawPlayUIModule(){
 
   // Phase
   const phase=getPhase();
-  if(zenMode){
+  if(testMode){
+    X.globalAlpha=0.72;X.fillStyle='#ffd32a';
+    X.font='bold 12px -apple-system, system-ui, sans-serif';
+    X.fillText('TESTE / SEM ERRO',W/2,85);X.globalAlpha=1;
+  } else if(zenMode){
     X.globalAlpha=0.5;X.fillStyle='#7bed9f';
     X.font='bold 12px -apple-system, system-ui, sans-serif';
     X.fillText('☯ MODO ZEN',W/2,85);X.globalAlpha=1;
@@ -428,6 +433,7 @@ function drawDeadUIModule(){
       drawActionBtn(btnX,btnY1+btnH+8,btnW,btnH,'MENU PRINCIPAL','#ff6b9d',false,()=>{
         pendingUnlocks=[];
         zenMode=false;
+        testMode=false;
         state=ST.MENU;
         menuScreen='main';
         setMusicVolume(0.95);
@@ -437,6 +443,7 @@ function drawDeadUIModule(){
       drawActionBtn(btnX,btnY1+btnH+6,btnW,36,'IR AO MENU','#ff6b9d',false,()=>{
         pendingUnlocks=[];
         zenMode=false;
+        testMode=false;
         state=ST.MENU;
         menuScreen='main';
         setMusicVolume(0.95);

@@ -509,6 +509,35 @@ function ensureStars(cx,cy){
 function die(){
   if(state!==ST.PLAY)return;
 
+  if(testMode){
+    const safeNode = typeof getSafeCurrentNode === 'function' ? getSafeCurrentNode() : (nodes[ball.currentNode] || nodes[0] || null);
+    flashA = Math.max(flashA, 0.3);
+    shakeT = Math.max(shakeT, 0.15);
+    shakeA = Math.max(shakeA, 7);
+    phaseMsg = 'MODO TESTE';
+    phaseMsgT = Math.max(phaseMsgT, 1.2);
+    emit(ball.x,ball.y,18,['#00f5d4','#80ffff','#ffffff'],1.1);
+    addScorePopup(ball.x,ball.y-46,'SEM ERRO','#00f5d4');
+    vibrate([15,10,15]);
+
+    if(safeNode){
+      const safeIdx = Math.max(0, nodes.indexOf(safeNode));
+      ball.currentNode = safeIdx;
+      ball.orbiting = true;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.angle = Math.atan2(ball.y-safeNode.y, ball.x-safeNode.x);
+      if(!Number.isFinite(ball.angle)) ball.angle = 0;
+      ball.orbitRadius = clamp(dist(ball.x,ball.y,safeNode.x,safeNode.y), ORBIT_R_MIN, ORBIT_R_MAX);
+      if(!Number.isFinite(ball.orbitRadius) || ball.orbitRadius <= 0) ball.orbitRadius = 44;
+      ball.orbitDir = ball.orbitDir || 1;
+      ball.x = safeNode.x + Math.cos(ball.angle) * ball.orbitRadius;
+      ball.y = safeNode.y + Math.sin(ball.angle) * ball.orbitRadius;
+      cam.tz = 1;
+    }
+    return;
+  }
+
   // Shield protects from death
   if(activeShield){
     activeShield=false;
@@ -673,8 +702,10 @@ function shouldShowAssistGuides(){
   return tutorialStep>0 || totalGames<1;
 }
 
-function startRun(useZen, source='unknown') {
-  zenMode = !!useZen;
+function startRun(useZen, source='unknown', opts) {
+  const startOpts = (opts && typeof opts === 'object') ? opts : {};
+  testMode = !!startOpts.testMode;
+  zenMode = testMode ? false : !!useZen;
   pendingUnlocks = [];
   reset();
   state = ST.PLAY;
@@ -682,7 +713,7 @@ function startRun(useZen, source='unknown') {
 
   if (typeof trackEvent === 'function') {
     trackEvent('game_start', {
-      mode: zenMode ? 'zen' : 'normal',
+      mode: testMode ? 'test' : (zenMode ? 'zen' : 'normal'),
       source,
       best,
       unlocked_skins: unlockedSkins.length,
@@ -693,13 +724,17 @@ function startRun(useZen, source='unknown') {
   if (typeof clearActiveRunSession === 'function') {
     clearActiveRunSession();
   }
-  if (!zenMode && typeof startServerRunSession === 'function') {
+  if (!zenMode && !testMode && typeof startServerRunSession === 'function') {
     startServerRunSession('normal', source);
   }
 }
 
+function startTestRun(source='debug_test'){
+  startRun(false, source, { testMode:true });
+}
+
 function quickRestartGame(source='retry'){
-  startRun(zenMode, source);
+  startRun(zenMode, source, { testMode });
 }
 
 function handleTap(x, y){

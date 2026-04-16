@@ -410,6 +410,7 @@ let unlockedBgs=['space'];
 let totalGoldCaptured=0;
 let menuScreen='loading'; // starts loading, then login or main
 let zenMode=false;
+let testMode=false;
 let zenUnlocked=false;
 // Stats
 let totalScoreEver=0;

@@ -22,6 +22,12 @@
     catch (e) { return 1; }
   }
 
+  function currentModeLabel(){
+    if (typeof testMode !== 'undefined' && testMode) return 'test';
+    if (typeof zenMode !== 'undefined' && zenMode) return 'zen';
+    return 'normal';
+  }
+
   function currentScreen(){
     try {
       if (typeof state === 'undefined' || typeof ST === 'undefined') return 'unknown';
@@ -41,7 +47,7 @@
         ? crypto.randomUUID()
         : ('run_' + Date.now() + '_' + Math.random().toString(16).slice(2)),
       source: String(source || 'unknown'),
-      mode: (typeof zenMode !== 'undefined' && zenMode) ? 'zen' : 'normal',
+      mode: currentModeLabel(),
       started_at_ms: nowMs(),
       captures: 0,
       captures_easy: 0,
@@ -81,7 +87,7 @@
     const m = ensureRunMetrics();
     const payload = {
       client_run_id: m.client_run_id,
-      mode: (typeof zenMode !== 'undefined' && zenMode) ? 'zen' : (m.mode || 'normal'),
+      mode: currentModeLabel() || (m.mode || 'normal'),
       source: m.source || 'unknown',
       score: num(typeof score !== 'undefined' ? score : 0),
       phase: currentPhase(),
@@ -184,7 +190,7 @@
       resetRunMetrics(source);
       const result = _startRun.apply(this, arguments);
       if (runMetrics) {
-        runMetrics.mode = (typeof zenMode !== 'undefined' && zenMode) ? 'zen' : 'normal';
+        runMetrics.mode = currentModeLabel();
         runMetrics.phase_max = currentPhase();
       }
       return result;

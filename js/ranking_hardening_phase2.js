@@ -32,7 +32,7 @@
   function getRankingHardeningMeta(reason){
     return {
       reason: reason || null,
-      mode: typeof zenMode !== 'undefined' && zenMode ? 'zen' : 'normal',
+      mode: typeof testMode !== 'undefined' && testMode ? 'test' : (typeof zenMode !== 'undefined' && zenMode ? 'zen' : 'normal'),
       captures: RH.captures,
       gold_captures: RH.goldCaptures,
       powerups: RH.powerups,
@@ -51,6 +51,7 @@
       if (typeof networkOnline !== 'undefined' && !networkOnline) return false;
       if (typeof activeRunSession === 'undefined' || !activeRunSession || !activeRunSession.run_id) return false;
       if (typeof zenMode !== 'undefined' && zenMode) return false;
+      if (typeof testMode !== 'undefined' && testMode) return false;
 
       const liveScore = Number(typeof score !== 'undefined' ? score : 0) || 0;
       const livePhase = Math.max(RH.highestPhase, currentPhaseSafe());
@@ -124,7 +125,8 @@
       await reportRunProgress('pre_submit', true);
       if (typeof sb !== 'undefined' && sb && typeof currentUser !== 'undefined' && currentUser &&
           typeof activeRunSession !== 'undefined' && activeRunSession && activeRunSession.run_id &&
-          !(typeof zenMode !== 'undefined' && zenMode)) {
+          !(typeof zenMode !== 'undefined' && zenMode) &&
+          !(typeof testMode !== 'undefined' && testMode)) {
         try {
           if (typeof networkOnline !== 'undefined' && networkOnline) {
             const { data, error } = await sb.rpc('submit_score_secure', {

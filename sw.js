@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orbita-pwa-v15';
+const CACHE_NAME = 'orbita-pwa-v16';
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const APP_SHELL = [
   './js/debug_tools.js',
   './js/settings_account_ui.js',
   './js/meta_progress_ui.js',
+  './js/menu_shell_ui.js',
   './js/main.js',
   './icons/icon-192.png',
   './icons/icon-512.png'

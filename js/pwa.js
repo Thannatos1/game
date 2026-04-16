@@ -2,9 +2,9 @@ let deferredInstallPrompt = null;
 let canInstallApp = false;
 let installPromptSeen = false;
 let pwaStatusText = '';
-const APP_PWA_CONFIG = window.App && window.App.config && window.App.config.pwa ? window.App.config.pwa : {};
-const appServiceRegistry = window.App && window.App.services ? window.App.services : null;
-const SERVICE_WORKER_PATH = APP_PWA_CONFIG.serviceWorkerPath || './sw.js';
+const pwaAppConfig = window.App && window.App.config && window.App.config.pwa ? window.App.config.pwa : {};
+const pwaAppServiceRegistry = window.App && window.App.services ? window.App.services : null;
+const pwaServiceWorkerPath = pwaAppConfig.serviceWorkerPath || './sw.js';
 const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
 const canShowIosInstallHelp = isIosDevice && !isStandaloneApp;
@@ -55,7 +55,7 @@ async function promptInstallApp() {
 function initPWA() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register(SERVICE_WORKER_PATH).then(() => {
+      navigator.serviceWorker.register(pwaServiceWorkerPath).then(() => {
         if (typeof trackEvent === 'function') trackEvent('pwa_sw_registered', {});
       }).catch(err => {
         console.warn('[Orbita] service worker register failed', err);
@@ -84,7 +84,7 @@ function initPWA() {
 
 initPWA();
 
-if (appServiceRegistry && typeof appServiceRegistry.register === 'function') {
-  appServiceRegistry.register('promptInstallApp', promptInstallApp);
-  appServiceRegistry.register('initPWA', initPWA);
+if (pwaAppServiceRegistry && typeof pwaAppServiceRegistry.register === 'function') {
+  pwaAppServiceRegistry.register('promptInstallApp', promptInstallApp);
+  pwaAppServiceRegistry.register('initPWA', initPWA);
 }

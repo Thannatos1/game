@@ -1,13 +1,13 @@
 // ============ SUPABASE / AUTH / GLOBAL RANKING ============
-const APP_CONFIG = window.App && window.App.config ? window.App.config : {};
-const APP_STORAGE_KEYS = APP_CONFIG.storageKeys || {};
-const appStorage = window.App && window.App.storage ? window.App.storage : null;
-const appServiceRegistry = window.App && window.App.services ? window.App.services : null;
-const SUPABASE_URL = APP_CONFIG.supabase && APP_CONFIG.supabase.url ? APP_CONFIG.supabase.url : 'https://poedjpfrwpdsdjjjduow.supabase.co';
-const SUPABASE_KEY = APP_CONFIG.supabase && APP_CONFIG.supabase.anonKey ? APP_CONFIG.supabase.anonKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvZWRqcGZyd3Bkc2RqampkdW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTgyNTksImV4cCI6MjA5MTU5NDI1OX0.6D0p4m9QPBPSlICDEMb2Y8umJpETbQ3FpInfwmpN-9o';
+const servicesAppConfig = window.App && window.App.config ? window.App.config : {};
+const servicesAppStorageKeys = servicesAppConfig.storageKeys || {};
+const servicesAppStorage = window.App && window.App.storage ? window.App.storage : null;
+const servicesAppServiceRegistry = window.App && window.App.services ? window.App.services : null;
+const SUPABASE_URL = servicesAppConfig.supabase && servicesAppConfig.supabase.url ? servicesAppConfig.supabase.url : 'https://poedjpfrwpdsdjjjduow.supabase.co';
+const SUPABASE_KEY = servicesAppConfig.supabase && servicesAppConfig.supabase.anonKey ? servicesAppConfig.supabase.anonKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvZWRqcGZyd3Bkc2RqampkdW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTgyNTksImV4cCI6MjA5MTU5NDI1OX0.6D0p4m9QPBPSlICDEMb2Y8umJpETbQ3FpInfwmpN-9o';
 
 function getLocalText(key) {
-  if (appStorage && typeof appStorage.getLocalText === 'function') return appStorage.getLocalText(key);
+  if (servicesAppStorage && typeof servicesAppStorage.getLocalText === 'function') return servicesAppStorage.getLocalText(key);
   try {
     return localStorage.getItem(key);
   } catch (e) {
@@ -16,7 +16,7 @@ function getLocalText(key) {
 }
 
 function setLocalText(key, value) {
-  if (appStorage && typeof appStorage.setLocalText === 'function') return appStorage.setLocalText(key, value);
+  if (servicesAppStorage && typeof servicesAppStorage.setLocalText === 'function') return servicesAppStorage.setLocalText(key, value);
   try {
     localStorage.setItem(key, String(value));
     return true;
@@ -26,7 +26,7 @@ function setLocalText(key, value) {
 }
 
 function removeLocal(key) {
-  if (appStorage && typeof appStorage.removeLocal === 'function') return appStorage.removeLocal(key);
+  if (servicesAppStorage && typeof servicesAppStorage.removeLocal === 'function') return servicesAppStorage.removeLocal(key);
   try {
     localStorage.removeItem(key);
     return true;
@@ -36,7 +36,7 @@ function removeLocal(key) {
 }
 
 function getLocalJson(key, fallback = null) {
-  if (appStorage && typeof appStorage.getLocalJson === 'function') return appStorage.getLocalJson(key, fallback);
+  if (servicesAppStorage && typeof servicesAppStorage.getLocalJson === 'function') return servicesAppStorage.getLocalJson(key, fallback);
   try {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
@@ -46,7 +46,7 @@ function getLocalJson(key, fallback = null) {
 }
 
 function setLocalJson(key, value) {
-  if (appStorage && typeof appStorage.setLocalJson === 'function') return appStorage.setLocalJson(key, value);
+  if (servicesAppStorage && typeof servicesAppStorage.setLocalJson === 'function') return servicesAppStorage.setLocalJson(key, value);
   try {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
@@ -56,7 +56,7 @@ function setLocalJson(key, value) {
 }
 
 function getSessionText(key) {
-  if (appStorage && typeof appStorage.getSessionText === 'function') return appStorage.getSessionText(key);
+  if (servicesAppStorage && typeof servicesAppStorage.getSessionText === 'function') return servicesAppStorage.getSessionText(key);
   try {
     return sessionStorage.getItem(key);
   } catch (e) {
@@ -65,7 +65,7 @@ function getSessionText(key) {
 }
 
 function setSessionText(key, value) {
-  if (appStorage && typeof appStorage.setSessionText === 'function') return appStorage.setSessionText(key, value);
+  if (servicesAppStorage && typeof servicesAppStorage.setSessionText === 'function') return servicesAppStorage.setSessionText(key, value);
   try {
     sessionStorage.setItem(key, String(value));
     return true;
@@ -75,7 +75,7 @@ function setSessionText(key, value) {
 }
 
 function getSessionJson(key, fallback = null) {
-  if (appStorage && typeof appStorage.getSessionJson === 'function') return appStorage.getSessionJson(key, fallback);
+  if (servicesAppStorage && typeof servicesAppStorage.getSessionJson === 'function') return servicesAppStorage.getSessionJson(key, fallback);
   try {
     const raw = sessionStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
@@ -85,7 +85,7 @@ function getSessionJson(key, fallback = null) {
 }
 
 function setSessionJson(key, value) {
-  if (appStorage && typeof appStorage.setSessionJson === 'function') return appStorage.setSessionJson(key, value);
+  if (servicesAppStorage && typeof servicesAppStorage.setSessionJson === 'function') return servicesAppStorage.setSessionJson(key, value);
   try {
     sessionStorage.setItem(key, JSON.stringify(value));
     return true;
@@ -95,7 +95,7 @@ function setSessionJson(key, value) {
 }
 
 function removeSession(key) {
-  if (appStorage && typeof appStorage.removeSession === 'function') return appStorage.removeSession(key);
+  if (servicesAppStorage && typeof servicesAppStorage.removeSession === 'function') return servicesAppStorage.removeSession(key);
   try {
     sessionStorage.removeItem(key);
     return true;
@@ -138,10 +138,10 @@ let rankingsError = '';
 let userPosition = -1;
 let lastSubmittedScore = 0;
 
-const RUN_SESSION_KEY = APP_STORAGE_KEYS.runSession || 'orbita_run_session';
+const RUN_SESSION_KEY = servicesAppStorageKeys.runSession || 'orbita_run_session';
 let activeRunSession = null;
 
-const PROFILE_NAME_CACHE_KEY = APP_STORAGE_KEYS.profileNameCache || 'orbita_profile_name_cache';
+const PROFILE_NAME_CACHE_KEY = servicesAppStorageKeys.profileNameCache || 'orbita_profile_name_cache';
 
 function getCachedProfileName() {
   try {
@@ -162,14 +162,14 @@ function setCachedProfileName(name) {
 }
 
 // Analytics
-const ANALYTICS_QUEUE_KEY = APP_STORAGE_KEYS.analyticsQueue || 'orbita_analytics_queue';
-const ANALYTICS_SESSION_KEY = APP_STORAGE_KEYS.analyticsSession || 'orbita_analytics_session_id';
+const ANALYTICS_QUEUE_KEY = servicesAppStorageKeys.analyticsQueue || 'orbita_analytics_queue';
+const ANALYTICS_SESSION_KEY = servicesAppStorageKeys.analyticsSession || 'orbita_analytics_session_id';
 let analyticsQueue = [];
 let analyticsFlushTimer = null;
 let analyticsSending = false;
 let analyticsSessionId = null;
 
-const PENDING_SCORE_KEY = APP_STORAGE_KEYS.pendingScore || 'orbita_pending_score';
+const PENDING_SCORE_KEY = servicesAppStorageKeys.pendingScore || 'orbita_pending_score';
 let networkOnline = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
 let pendingScoreSubmission = null;
 
@@ -727,7 +727,7 @@ async function deleteAccount() {
 
     await sb.auth.signOut();
 
-    removeLocal(APP_STORAGE_KEYS.save || 'orbita_save');
+    removeLocal(servicesAppStorageKeys.save || 'orbita_save');
     setCachedProfileName('');
     removeLocal(ANALYTICS_QUEUE_KEY);
     clearActiveRunSession();
@@ -764,7 +764,7 @@ async function deleteAccount() {
 }
 
 function resetLocalProgress() {
-  removeLocal(APP_STORAGE_KEYS.save || 'orbita_save');
+  removeLocal(servicesAppStorageKeys.save || 'orbita_save');
   best = 0;
   totalGames = 0;
   totalScoreEver = 0;
@@ -852,15 +852,15 @@ window.addEventListener('beforeunload', () => {
   persistRunSession();
 });
 
-if (appServiceRegistry && typeof appServiceRegistry.register === 'function') {
-  appServiceRegistry.register('initSupabase', initSupabase);
-  appServiceRegistry.register('initAuth', initAuth);
-  appServiceRegistry.register('trackEvent', trackEvent);
-  appServiceRegistry.register('flushAnalyticsQueue', flushAnalyticsQueue);
-  appServiceRegistry.register('loadRankings', loadRankings);
-  appServiceRegistry.register('submitScore', submitScore);
-  appServiceRegistry.register('saveNickname', saveNickname);
-  appServiceRegistry.register('changeNickname', changeNickname);
-  appServiceRegistry.register('resetLocalProgress', resetLocalProgress);
-  appServiceRegistry.register('deleteAccount', deleteAccount);
+if (servicesAppServiceRegistry && typeof servicesAppServiceRegistry.register === 'function') {
+  servicesAppServiceRegistry.register('initSupabase', initSupabase);
+  servicesAppServiceRegistry.register('initAuth', initAuth);
+  servicesAppServiceRegistry.register('trackEvent', trackEvent);
+  servicesAppServiceRegistry.register('flushAnalyticsQueue', flushAnalyticsQueue);
+  servicesAppServiceRegistry.register('loadRankings', loadRankings);
+  servicesAppServiceRegistry.register('submitScore', submitScore);
+  servicesAppServiceRegistry.register('saveNickname', saveNickname);
+  servicesAppServiceRegistry.register('changeNickname', changeNickname);
+  servicesAppServiceRegistry.register('resetLocalProgress', resetLocalProgress);
+  servicesAppServiceRegistry.register('deleteAccount', deleteAccount);
 }

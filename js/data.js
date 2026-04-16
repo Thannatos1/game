@@ -133,10 +133,10 @@ const DAILY_REWARD_POOL = [
   {type:'bg', key:'galaxy'},
 ];
 
-const APP_STORAGE_KEYS = window.App && window.App.config && window.App.config.storageKeys ? window.App.config.storageKeys : {};
-const appStorage = window.App && window.App.storage ? window.App.storage : null;
-const appServiceRegistry = window.App && window.App.services ? window.App.services : null;
-const SAVE_STORAGE_KEY = APP_STORAGE_KEYS.save || 'orbita_save';
+const dataAppStorageKeys = window.App && window.App.config && window.App.config.storageKeys ? window.App.config.storageKeys : {};
+const dataAppStorage = window.App && window.App.storage ? window.App.storage : null;
+const dataAppServiceRegistry = window.App && window.App.services ? window.App.services : null;
+const SAVE_STORAGE_KEY = dataAppStorageKeys.save || 'orbita_save';
 const orbitaSaveHooks = window.__orbitaSaveHooks || (window.__orbitaSaveHooks = { beforeSave: [] });
 
 function registerOrbitaBeforeSaveHook(fn){
@@ -174,8 +174,8 @@ window.buildOrbitaSaveData = buildSaveData;
 
 // Load saved data
 try {
-  const d = appStorage && typeof appStorage.getLocalJson === 'function'
-    ? appStorage.getLocalJson(SAVE_STORAGE_KEY, null)
+  const d = dataAppStorage && typeof dataAppStorage.getLocalJson === 'function'
+    ? dataAppStorage.getLocalJson(SAVE_STORAGE_KEY, null)
     : JSON.parse(localStorage.getItem(SAVE_STORAGE_KEY) || 'null');
   if (d) {
     best = d.best || 0;
@@ -206,15 +206,15 @@ try {
 function saveData() {
   try {
     const payload = buildSaveData();
-    if (appStorage && typeof appStorage.setLocalJson === 'function') appStorage.setLocalJson(SAVE_STORAGE_KEY, payload);
+    if (dataAppStorage && typeof dataAppStorage.setLocalJson === 'function') dataAppStorage.setLocalJson(SAVE_STORAGE_KEY, payload);
     else localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(payload));
   } catch(e) {}
 }
 
-if (appServiceRegistry && typeof appServiceRegistry.register === 'function') {
-  appServiceRegistry.register('registerOrbitaBeforeSaveHook', registerOrbitaBeforeSaveHook);
-  appServiceRegistry.register('buildSaveData', buildSaveData);
-  appServiceRegistry.register('saveData', saveData);
+if (dataAppServiceRegistry && typeof dataAppServiceRegistry.register === 'function') {
+  dataAppServiceRegistry.register('registerOrbitaBeforeSaveHook', registerOrbitaBeforeSaveHook);
+  dataAppServiceRegistry.register('buildSaveData', buildSaveData);
+  dataAppServiceRegistry.register('saveData', saveData);
 }
 
 

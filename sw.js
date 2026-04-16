@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orbita-pwa-v19';
+const CACHE_NAME = 'orbita-pwa-v21';
 const APP_SHELL = [
   './',
   './index.html',
@@ -20,6 +20,7 @@ const APP_SHELL = [
   './js/ranking_hardening_phase2.js',
   './js/analytics_actionable_patch.js',
   './js/fairness_rng_patch.js',
+  './js/run_variety_patch.js',
   './js/career_meta_patch.js',
   './js/ux_secondary_polish_patch.js',
   './js/main.js',

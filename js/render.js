@@ -1129,13 +1129,6 @@ function drawNode(n,nx,ny,idx){
     X.setLineDash([]);
   }
 
-  // Orbit ring
-  if(isActive){
-    X.globalAlpha=0.2;X.strokeStyle='#ffffff';X.lineWidth=1;X.setLineDash([3,6]);
-    X.beginPath();X.arc(nx,ny,ball.orbitRadius,0,Math.PI*2);X.stroke();
-    X.setLineDash([]);
-  }
-
   // Body
   X.globalAlpha=nodeAlpha;
   const r=n.nodeR+ps;
@@ -1151,6 +1144,14 @@ function drawNode(n,nx,ny,idx){
     const sg=X.createRadialGradient(nx-3,ny-3,0,nx,ny,r);
     sg.addColorStop(0,'rgba(255,255,255,0.4)');sg.addColorStop(1,'rgba(255,255,255,0)');
     X.fillStyle=sg;X.beginPath();X.arc(nx,ny,r,0,Math.PI*2);X.fill();
+  }
+
+  // Orbit ring (desenhado depois do nó para ficar por cima do glow)
+  if(isActive){
+    X.globalAlpha=0.55;X.strokeStyle=col.main;X.lineWidth=2;X.setLineDash([5,5]);
+    X.lineDashOffset=-menuT*8;
+    X.beginPath();X.arc(nx,ny,ball.orbitRadius,0,Math.PI*2);X.stroke();
+    X.setLineDash([]);X.lineDashOffset=0;
   }
 
   // Points label

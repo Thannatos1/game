@@ -61,16 +61,52 @@
     return { x:0.5, y:0.5 };
   }
 
-  function isSpawnInsideMobileSafeZone(x, y, fromNode, phase){
-    if (!isMobilePortraitGameplay() || !fromNode) return true;
+  function clampValue(value, min, max){
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function getTierSpawnEdgePadding(tier, phase){
+    const capturePad = typeof getCaptureR === 'function' ? getCaptureR(tier) : 48;
+    const tierConfig = (typeof TIERS !== 'undefined' && TIERS && TIERS[tier]) ? TIERS[tier] : null;
+    const nodePad = (typeof NODE_R === 'number' ? NODE_R : 12) * (tierConfig ? tierConfig.sizeMul : 1);
+    const phasePad = phase >= 5 ? 8 : (phase >= 3 ? 4 : 0);
+    return Math.max(capturePad + 12, nodePad + 20, 48) + phasePad;
+  }
+
+  function getMobileSpawnSafeBounds(fromNode, phase, tier){
+    if (!isMobilePortraitGameplay() || !fromNode) return null;
 
     const anchor = getSpawnCameraAnchor();
-    const left = fromNode.x - W * anchor.x + Math.max(20, W * 0.035);
-    const right = fromNode.x + W * (1 - anchor.x) - Math.max(20, W * 0.035);
-    const top = fromNode.y - H * anchor.y + Math.max(42, H * 0.06);
-
+    const edgePad = getTierSpawnEdgePadding(tier, phase);
+    const sideInset = edgePad + Math.max(16, W * 0.02);
+    const topHudInset =
+      Math.max(100, H * 0.11) +
+      ((typeof getCurrentRunMutator === 'function' && getCurrentRunMutator()) ? 46 : 0) +
+      (((typeof testMode !== 'undefined' && testMode) || zenMode || phase > 1) ? 16 : 0);
+    const bottomInset = edgePad + Math.max(18, H * 0.03);
     const centerBias = phase >= 2 ? Math.max(12, W * 0.02) : 0;
-    return x >= (left + centerBias) && x <= (right - centerBias) && y >= top;
+
+    return {
+      left: fromNode.x - W * anchor.x + sideInset + centerBias,
+      right: fromNode.x + W * (1 - anchor.x) - sideInset - centerBias,
+      top: fromNode.y - H * anchor.y + topHudInset + edgePad,
+      bottom: fromNode.y + H * (1 - anchor.y) - bottomInset
+    };
+  }
+
+  function isSpawnInsideMobileSafeZone(x, y, fromNode, phase, tier){
+    const bounds = getMobileSpawnSafeBounds(fromNode, phase, tier);
+    if (!bounds) return true;
+    return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+  }
+
+  function clampSpawnToMobileSafeZone(x, y, fromNode, phase, tier){
+    const bounds = getMobileSpawnSafeBounds(fromNode, phase, tier);
+    if (!bounds) return { x, y };
+    return {
+      x: clampValue(x, bounds.left, bounds.right),
+      y: clampValue(y, bounds.top, bounds.bottom)
+    };
   }
 
   function canPlaceAsteroid(ax, ay, fromNode, targetNode){
@@ -133,14 +169,15 @@
     const phase = getPhase();
     const mobilePortrait = isMobilePortraitGameplay();
     const phaseNeedsMobileTightening = mobilePortrait && phase >= 2;
+    const crowdRelief = mobilePortrait ? clampValue((score - 22) / 42, 0, 1) : 0;
 
-    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? 0.93 : 1);
+    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? (0.93 + crowdRelief * 0.07) : 1);
     config.baseAngle = -Math.PI/2 + (config.angleOffset * (phaseNeedsMobileTightening ? 0.94 : 1));
     config.distJitterMin = -24;
     config.distJitterMax = 24;
-    config.angleJitter = 0.16 * (phaseNeedsMobileTightening ? 0.94 : 1);
-    config.minSpacing = 158;
-    config.maxAttempts = 24;
+    config.angleJitter = 0.16 * (phaseNeedsMobileTightening ? (0.94 - crowdRelief * 0.10) : 1);
+    config.minSpacing = mobilePortrait ? (160 + crowdRelief * 14) : 158;
+    config.maxAttempts = mobilePortrait ? 34 : 24;
     config.movingSpeedMin = 1.1;
     config.movingSpeedMax = 1.9;
     config.movingRadiusMin = 12;
@@ -156,9 +193,11 @@
     config.mediumMoveChance = (!zenMode && phase >= 6 && config.tier === 'medium') ? 0.08 : 0;
 
     if (phaseNeedsMobileTightening && config.fromNode) {
-      config.isPositionValid = (x, y) => isSpawnInsideMobileSafeZone(x, y, config.fromNode, phase);
+      config.isPositionValid = (x, y) => isSpawnInsideMobileSafeZone(x, y, config.fromNode, phase, config.tier);
+      config.clampPosition = (x, y) => clampSpawnToMobileSafeZone(x, y, config.fromNode, phase, config.tier);
     } else {
       config.isPositionValid = null;
+      config.clampPosition = null;
     }
 
     return config;

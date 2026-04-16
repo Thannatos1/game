@@ -294,10 +294,11 @@
     const active = varietyState.active;
     if (!active || state !== ST.PLAY) return;
 
-    const w = Math.min(W * 0.72, 278);
-    const h = 44;
+    const w = Math.min(W * 0.68, 268);
+    const h = 40;
     const x = 16;
-    const y = 86;
+    const hasTopStatus = !!testMode || !!zenMode || (typeof getPhase === 'function' && Number(getPhase()) > 1);
+    const y = hasTopStatus ? 102 : 82;
 
     X.save();
     X.globalAlpha = 0.92;
@@ -321,20 +322,20 @@
 
     X.fillStyle = '#ffffff';
     X.font = 'bold 12px -apple-system, system-ui, sans-serif';
-    X.fillText(active.title, x + 12, y + 26);
+    X.fillText(active.title, x + 12, y + 24);
 
     X.fillStyle = 'rgba(255,255,255,0.65)';
-    X.font = '10px -apple-system, system-ui, sans-serif';
-    X.fillText(active.desc, x + 12, y + 37);
+    X.font = '9px -apple-system, system-ui, sans-serif';
+    X.fillText(active.desc, x + 12, y + 34);
 
     X.textAlign = 'right';
     X.fillStyle = active.color;
     X.font = 'bold 16px -apple-system, system-ui, sans-serif';
-    X.fillText(String(Math.max(0, active.remainingCaptures)), x + w - 12, y + 22);
+    X.fillText(String(Math.max(0, active.remainingCaptures)), x + w - 12, y + 20);
 
     X.fillStyle = 'rgba(255,255,255,0.48)';
     X.font = '10px -apple-system, system-ui, sans-serif';
-    X.fillText('saltos', x + w - 12, y + 34);
+    X.fillText('saltos', x + w - 12, y + 31);
     X.restore();
   }
 

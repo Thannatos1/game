@@ -184,24 +184,35 @@ function placeBranch(fromNode, tier, angleOffset) {
     disappearTimerMax: 4,
     teleportTimerMin: 2,
     teleportTimerMax: 4,
-    isPositionValid: null
+    isPositionValid: null,
+    clampPosition: null
   };
   config = applyOrbitaGameplayHooks('adjustPlaceBranchConfig', config);
 
-  let nx, ny, attempts=0, distance;
-  do {
+  let nx = fromNode.x;
+  let ny = fromNode.y;
+  let attempts = 0;
+  let distance;
+  while (attempts < config.maxAttempts) {
     distance = config.baseDist * t.distMul + rand(config.distJitterMin, config.distJitterMax);
     const angle = config.baseAngle + rand(-config.angleJitter, config.angleJitter);
-    nx = fromNode.x + Math.cos(angle) * distance;
-    ny = fromNode.y + Math.sin(angle) * distance;
+    let candidateX = fromNode.x + Math.cos(angle) * distance;
+    let candidateY = fromNode.y + Math.sin(angle) * distance;
+    if (typeof config.clampPosition === 'function') {
+      const adjusted = config.clampPosition(candidateX, candidateY);
+      if (adjusted && Number.isFinite(adjusted.x) && Number.isFinite(adjusted.y)) {
+        candidateX = adjusted.x;
+        candidateY = adjusted.y;
+      }
+    }
+    nx = candidateX;
+    ny = candidateY;
     attempts++;
-  } while(
-    attempts < config.maxAttempts &&
-    (
+    const blocked =
       isTooClose(nx, ny, config.minSpacing) ||
-      (typeof config.isPositionValid === 'function' && !config.isPositionValid(nx, ny))
-    )
-  );
+      (typeof config.isPositionValid === 'function' && !config.isPositionValid(nx, ny));
+    if (!blocked) break;
+  }
 
   let isMoving = false;
   let isDisappearing = false;
@@ -308,9 +319,85 @@ function genAsteroidShape(){
 function getGameplayCameraAnchor(isFlying){
   const mobilePortrait = H > W && Math.min(W, H) <= 900;
   if (mobilePortrait) {
-    return { x: 0.5, y: isFlying ? 0.66 : 0.60 };
+    const pressure = clamp((score - 22) / 70, 0, 1);
+    return { x: 0.5, y: isFlying ? (0.66 + pressure * 0.03) : (0.60 + pressure * 0.04) };
   }
   return { x: 0.5, y: 0.5 };
+}
+
+function getGameplayViewportSafeBounds(){
+  const mutatorInset = (typeof getCurrentRunMutator === 'function' && getCurrentRunMutator()) ? 48 : 0;
+  const statusInset = ((typeof testMode !== 'undefined' && testMode) || zenMode || getPhase() > 1) ? 18 : 0;
+  return {
+    left: 24,
+    right: W - 24,
+    top: 102 + statusInset + mutatorInset,
+    bottom: H - 30
+  };
+}
+
+function getGameplayAutoZoomTarget(isFlying){
+  const mobilePortrait = H > W && Math.min(W, H) <= 900;
+  const defaultZoom = isFlying ? 0.85 : 1;
+  if (!mobilePortrait) return defaultZoom;
+
+  const anchor = getGameplayCameraAnchor(isFlying);
+  const focusNode = getSafeCurrentNode();
+  const focusX = isFlying ? ball.x : ((focusNode && Number.isFinite(focusNode.x)) ? focusNode.x : ball.x);
+  const focusY = isFlying ? ball.y : ((focusNode && Number.isFinite(focusNode.y)) ? focusNode.y : ball.y);
+  const camX = focusX - W * anchor.x;
+  const camY = focusY - H * anchor.y;
+  const safe = getGameplayViewportSafeBounds();
+  const cx = W / 2;
+  const cy = H / 2;
+  let targetZoom = 1;
+
+  function fitAxis(minCoord, maxCoord, safeMin, safeMax, center){
+    let limit = 1;
+    if (minCoord < center) {
+      const delta = center - minCoord;
+      if (delta > 0) limit = Math.min(limit, (center - safeMin) / delta);
+    }
+    if (maxCoord > center) {
+      const delta = maxCoord - center;
+      if (delta > 0) limit = Math.min(limit, (safeMax - center) / delta);
+    }
+    return limit;
+  }
+
+  function consumeCandidate(x, y, pad){
+    const sx = x - camX;
+    const sy = y - camY;
+    targetZoom = Math.min(targetZoom, fitAxis(sx - pad, sx + pad, safe.left, safe.right, cx));
+    targetZoom = Math.min(targetZoom, fitAxis(sy - pad, sy + pad, safe.top, safe.bottom, cy));
+  }
+
+  if (focusNode) {
+    consumeCandidate(focusNode.x, focusNode.y, Math.max(focusNode.captureR + 10, focusNode.nodeR + 18));
+  } else {
+    consumeCandidate(ball.x, ball.y, BALL_R + 18);
+  }
+
+  if (isFlying) {
+    consumeCandidate(ball.x, ball.y, BALL_R + 18);
+  }
+
+  for (const n of nodes) {
+    if (!n || !n.visible || n === focusNode) continue;
+    if (n.captured) continue;
+    consumeCandidate(n.x, n.y, Math.max(n.captureR + 10, n.nodeR + 18));
+  }
+
+  const scorePressure = clamp((score - 22) / 55, 0, 1);
+  const phasePressure = clamp((getPhase() - 2) / 4, 0, 1);
+  const baselineZoom = isFlying
+    ? (0.92 - scorePressure * 0.12)
+    : (1 - Math.max(scorePressure * 0.10, phasePressure * 0.06));
+  const minZoom = isFlying ? 0.76 : 0.82;
+  const maxZoom = isFlying ? 0.92 : 1;
+
+  targetZoom = Math.min(targetZoom, baselineZoom);
+  return clamp(targetZoom, minZoom, maxZoom);
 }
 
 function getGameplayStartNodePos(){
@@ -356,7 +443,7 @@ function reset(){
   ball.x=n.x+Math.cos(ball.angle)*ball.orbitRadius;
   ball.y=n.y+Math.sin(ball.angle)*ball.orbitRadius;
   cam.x=n.x-W*anchor.x;cam.y=n.y-H*anchor.y;cam.tx=cam.x;cam.ty=cam.y;
-  cam.zoom=1;cam.tz=1;
+  cam.zoom=getGameplayAutoZoomTarget(false);cam.tz=cam.zoom;
 }
 
 // ============ GAME LOGIC ============
@@ -369,7 +456,7 @@ function release(){
   ball.vy=Math.sin(tang)*speed;
   ball.orbiting=false;
   ball.squash=0.8;
-  cam.tz=0.85; // zoom out while flying
+  cam.tz=getGameplayAutoZoomTarget(true);
   sndRelease();
   emit(ball.x,ball.y,6,['#ffffff','#aaaaff'],0.6);
 }
@@ -380,7 +467,7 @@ function capture(nodeIdx){
   ball.currentNode=nodeIdx;
   ball.orbiting=true;
   n.captured=true;
-  cam.tz=1; // zoom back in
+  cam.tz=getGameplayAutoZoomTarget(false);
 
   // Tutorial progression
   if(tutorialStep===2)tutorialStep=3;
@@ -1093,6 +1180,7 @@ function update(dt){
     cam.tx=ball.x-W*anchor.x;
     cam.ty=ball.y-H*anchor.y;
   }
+  cam.tz = getGameplayAutoZoomTarget(!ball.orbiting);
   cam.x+=(cam.tx-cam.x)*4*dt;
   cam.y+=(cam.ty-cam.y)*4*dt;
   cam.zoom+=(cam.tz-cam.zoom)*5*dt;

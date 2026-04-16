@@ -143,7 +143,8 @@ function drawPlayUIModule(){
   }
 
   // Power-up active timers (left side)
-  let puY = 130;
+  const hasRunMutator = (typeof getCurrentRunMutator === 'function') && !!getCurrentRunMutator();
+  let puY = hasRunMutator ? 150 : 130;
   if(activeShield){
     drawPuTimer(20,puY,'shield','#00ffff',1);
     puY+=42;

@@ -382,6 +382,20 @@ function getGameplayAutoZoomTarget(isFlying){
     consumeCandidate(ball.x, ball.y, BALL_R + 18);
   }
 
+  const recentCaptured = [];
+  for (const n of nodes) {
+    if (!n || !n.visible || n === focusNode || !n.captured) continue;
+    const d = dist(focusX, focusY, n.x, n.y);
+    if (d <= Math.max(W * 0.92, H * 0.58)) {
+      recentCaptured.push({ node: n, distance: d });
+    }
+  }
+  recentCaptured.sort((a, b) => a.distance - b.distance);
+  for (const item of recentCaptured.slice(0, 2)) {
+    const n = item.node;
+    consumeCandidate(n.x, n.y, Math.max(n.captureR + 10, n.nodeR + 18));
+  }
+
   for (const n of nodes) {
     if (!n || !n.visible || n === focusNode) continue;
     if (n.captured) continue;

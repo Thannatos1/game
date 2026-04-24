@@ -80,16 +80,17 @@
     const edgePad = getTierSpawnEdgePadding(tier, phase);
     const sideInset = edgePad + Math.max(16, W * 0.02);
     const topHudInset =
-      Math.max(100, H * 0.11) +
-      ((typeof getCurrentRunMutator === 'function' && getCurrentRunMutator()) ? 46 : 0) +
-      (((typeof testMode !== 'undefined' && testMode) || zenMode || phase > 1) ? 16 : 0);
+      (phase <= 2 ? Math.max(68, H * 0.078) : Math.max(88, H * 0.10)) +
+      ((typeof getCurrentRunMutator === 'function' && getCurrentRunMutator()) ? (phase <= 2 ? 34 : 46) : 0) +
+      (((typeof testMode !== 'undefined' && testMode) || zenMode || phase > 1) ? (phase <= 2 ? 10 : 16) : 0);
     const bottomInset = edgePad + Math.max(18, H * 0.03);
     const centerBias = phase >= 2 ? Math.max(12, W * 0.02) : 0;
+    const topEdgeFactor = phase <= 2 ? 0.48 : 1;
 
     return {
       left: fromNode.x - W * anchor.x + sideInset + centerBias,
       right: fromNode.x + W * (1 - anchor.x) - sideInset - centerBias,
-      top: fromNode.y - H * anchor.y + topHudInset + edgePad,
+      top: fromNode.y - H * anchor.y + topHudInset + edgePad * topEdgeFactor,
       bottom: fromNode.y + H * (1 - anchor.y) - bottomInset
     };
   }
@@ -170,13 +171,14 @@
     const mobilePortrait = isMobilePortraitGameplay();
     const phaseNeedsMobileTightening = mobilePortrait && phase >= 2;
     const crowdRelief = mobilePortrait ? clampValue((score - 22) / 42, 0, 1) : 0;
+    const phaseTwoSpreadBoost = mobilePortrait && phase === 2 ? 1.08 : 1;
 
-    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? (0.93 + crowdRelief * 0.07) : 1);
+    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? (0.93 + crowdRelief * 0.07) : 1) * phaseTwoSpreadBoost;
     config.baseAngle = -Math.PI/2 + (config.angleOffset * (phaseNeedsMobileTightening ? 0.94 : 1));
     config.distJitterMin = -24;
     config.distJitterMax = 24;
     config.angleJitter = 0.16 * (phaseNeedsMobileTightening ? (0.94 - crowdRelief * 0.10) : 1);
-    config.minSpacing = mobilePortrait ? (160 + crowdRelief * 14) : 158;
+    config.minSpacing = mobilePortrait ? (160 + crowdRelief * 14 + (phase === 2 ? 12 : 0)) : 158;
     config.maxAttempts = mobilePortrait ? 34 : 24;
     config.movingSpeedMin = 1.1;
     config.movingSpeedMax = 1.9;
@@ -218,10 +220,10 @@
       branches.push(placeBranch(fromNode, 'easy', rand(-0.88,-0.52)));
       branches.push(placeBranch(fromNode, 'medium', rand(0.52,0.88)));
     } else if (phase <= 2) {
-      branches.push(placeBranch(fromNode, 'easy', rand(-0.98,-0.55)));
-      branches.push(placeBranch(fromNode, 'medium', rand(0.55,0.98)));
-      if (score >= 12 && Math.random() < 0.18) {
-        branches.push(placeBranch(fromNode, 'hard', rand(-0.16, 0.16)));
+      branches.push(placeBranch(fromNode, 'easy', rand(-1.10,-0.70)));
+      branches.push(placeBranch(fromNode, 'medium', rand(0.70,1.10)));
+      if (score >= 14 && Math.random() < 0.14) {
+        branches.push(placeBranch(fromNode, 'hard', rand(-0.08, 0.08)));
       }
     } else if (phase <= 3) {
       branches.push(placeBranch(fromNode, 'easy', rand(-1.0,-0.62)));

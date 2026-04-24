@@ -120,8 +120,21 @@
     }
   }
 
-  function getCanonicalBranchOffsets(count){
+  function getCanonicalBranchOffsets(orderedBranches){
     const mobilePortrait = isMobilePortraitGameplay();
+    const count = Array.isArray(orderedBranches) ? orderedBranches.length : Number(orderedBranches) || 0;
+    const tiers = Array.isArray(orderedBranches) ? orderedBranches.map(branch => branch && branch.tier) : [];
+
+    if (count === 3 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'hard') {
+      return mobilePortrait ? [-1.12, 0.80, 0.08] : [-1.00, 0.72, 0.04];
+    }
+    if (count === 3 && tiers[2] === 'gold') {
+      return mobilePortrait ? [-1.14, 0.76, 0.02] : [-1.02, 0.68, 0];
+    }
+    if (count === 4 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'hard' && tiers[3] === 'gold') {
+      return mobilePortrait ? [-1.22, -0.72, 0.80, 0.04] : [-1.10, -0.64, 0.72, 0.02];
+    }
+
     if (count >= 4) {
       return mobilePortrait ? [-1.24, -0.40, 0.40, 1.24] : [-1.14, -0.34, 0.34, 1.14];
     }
@@ -136,9 +149,9 @@
     const phasePressure = clampValue((phase - 1) / 5, 0, 1);
     const map = {
       easy: mobilePortrait ? 1.00 : 1.00,
-      medium: mobilePortrait ? (1.07 + phasePressure * 0.03) : (1.05 + phasePressure * 0.02),
-      hard: mobilePortrait ? (1.14 + phasePressure * 0.05) : (1.10 + phasePressure * 0.04),
-      gold: mobilePortrait ? (1.20 + phasePressure * 0.06) : (1.16 + phasePressure * 0.05)
+      medium: mobilePortrait ? (1.04 + phasePressure * 0.03) : (1.03 + phasePressure * 0.02),
+      hard: mobilePortrait ? (1.22 + phasePressure * 0.07) : (1.16 + phasePressure * 0.05),
+      gold: mobilePortrait ? (1.30 + phasePressure * 0.08) : (1.22 + phasePressure * 0.06)
     };
     return map[tier] || 1;
   }
@@ -173,7 +186,7 @@
         if (riskDiff !== 0) return riskDiff;
         return (a && a.pts || 0) - (b && b.pts || 0);
       });
-    const offsets = getCanonicalBranchOffsets(ordered.length);
+    const offsets = getCanonicalBranchOffsets(ordered);
 
     ordered.forEach((branch, idx) => {
       repositionCanonicalBranch(fromNode, branch, phase, offsets[idx] ?? 0);

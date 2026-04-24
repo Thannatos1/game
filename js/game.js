@@ -618,6 +618,24 @@ function ensureStars(cx,cy){
   }
 }
 
+function restoreBallToOrbit(node, nodeIdx){
+  if(!node) return false;
+  const safeIdx = Number.isInteger(nodeIdx) && nodeIdx >= 0 ? nodeIdx : Math.max(0, nodes.indexOf(node));
+  ball.currentNode = safeIdx;
+  ball.orbiting = true;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.angle = Math.atan2(ball.y-node.y, ball.x-node.x);
+  if(!Number.isFinite(ball.angle)) ball.angle = 0;
+  ball.orbitRadius = clamp(dist(ball.x,ball.y,node.x,node.y), ORBIT_R_MIN, ORBIT_R_MAX);
+  if(!Number.isFinite(ball.orbitRadius) || ball.orbitRadius <= 0) ball.orbitRadius = 44;
+  ball.orbitDir = ball.orbitDir || 1;
+  ball.x = node.x + Math.cos(ball.angle) * ball.orbitRadius;
+  ball.y = node.y + Math.sin(ball.angle) * ball.orbitRadius;
+  cam.tz = getGameplayAutoZoomTarget(false);
+  return true;
+}
+
 function die(){
   if(state!==ST.PLAY)return;
 
@@ -634,17 +652,7 @@ function die(){
 
     if(safeNode){
       const safeIdx = Math.max(0, nodes.indexOf(safeNode));
-      ball.currentNode = safeIdx;
-      ball.orbiting = true;
-      ball.vx = 0;
-      ball.vy = 0;
-      ball.angle = Math.atan2(ball.y-safeNode.y, ball.x-safeNode.x);
-      if(!Number.isFinite(ball.angle)) ball.angle = 0;
-      ball.orbitRadius = clamp(dist(ball.x,ball.y,safeNode.x,safeNode.y), ORBIT_R_MIN, ORBIT_R_MAX);
-      if(!Number.isFinite(ball.orbitRadius) || ball.orbitRadius <= 0) ball.orbitRadius = 44;
-      ball.orbitDir = ball.orbitDir || 1;
-      ball.x = safeNode.x + Math.cos(ball.angle) * ball.orbitRadius;
-      ball.y = safeNode.y + Math.sin(ball.angle) * ball.orbitRadius;
+      restoreBallToOrbit(safeNode, safeIdx);
       cam.tz = 1;
     }
     return;
@@ -662,15 +670,12 @@ function die(){
       playTone(800,0.2,'sine',0.15);
       setTimeout(()=>playTone(1000,0.2,'sine',0.1),100);
     }
-    // Bounce back toward last captured node
-    const cn=nodes[ball.currentNode];
+    phaseMsg='ESCUDO SALVOU';
+    phaseMsgT=Math.max(phaseMsgT,1.1);
+    const safeIdx = getSafeCurrentNodeIndex();
+    const cn = safeIdx >= 0 ? nodes[safeIdx] : null;
     if(cn){
-      const dx=cn.x-ball.x,dy=cn.y-ball.y;
-      const d=Math.sqrt(dx*dx+dy*dy);
-      if(d>0){
-        ball.vx=dx/d*200;
-        ball.vy=dy/d*200;
-      }
+      restoreBallToOrbit(cn, safeIdx);
     }
     return;
   }

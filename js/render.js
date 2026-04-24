@@ -2205,10 +2205,10 @@ function getBackTargetScreen(){
 
 function drawBackBtn(){
   const mobilePortrait = H > W;
-  const bw = mobilePortrait ? 92 : 84;
-  const bh = 34;
-  const bx = 18;
-  const by = H - (mobilePortrait ? 78 : 48);
+  const bw = mobilePortrait ? 82 : 84;
+  const bh = mobilePortrait ? 30 : 34;
+  const bx = mobilePortrait ? 14 : 18;
+  const by = mobilePortrait ? Math.max(58, H*0.085) : 18;
   X.globalAlpha=0.86;
   X.fillStyle='rgba(0,0,0,0.68)';
   roundRect(bx,by,bw,bh,9);
@@ -2217,7 +2217,7 @@ function drawBackBtn(){
   roundRect(bx,by,bw,bh,9);
   X.stroke();
   X.fillStyle='#fff';
-  X.font='bold 13px -apple-system, system-ui, sans-serif';
+  X.font=(mobilePortrait?'bold 12px':'bold 13px')+' -apple-system, system-ui, sans-serif';
   X.textAlign='center';X.textBaseline='middle';
   X.fillText('← VOLTAR',bx+bw/2,by+bh/2);
   X.globalAlpha=1;
@@ -2611,4 +2611,3 @@ function drawDeadUI(){
     return window.drawDeadUIModule.apply(this, arguments);
   }
 }
-

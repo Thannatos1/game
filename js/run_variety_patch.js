@@ -154,6 +154,14 @@
     return varietyState.active;
   }
 
+  function isMobilePortraitVariety(){
+    try {
+      return H > W && Math.min(W, H) <= 900;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function getAngleOffsetForNode(fromNode, node){
     if (!fromNode || !node) return 0;
     return Math.atan2(node.y - fromNode.y, node.x - fromNode.x) + (Math.PI / 2);
@@ -172,7 +180,14 @@
   }
 
   function findExtraAngleOffset(fromNode, branches){
-    const candidateOffsets = [-1.08, -0.78, -0.36, 0.36, 0.78, 1.08];
+    const mobilePortrait = isMobilePortraitVariety();
+    const candidateOffsets = branches.length >= 3
+      ? (mobilePortrait
+        ? [-1.30, -1.04, 1.04, 1.30]
+        : [-1.20, -0.96, 0.96, 1.20])
+      : (mobilePortrait
+        ? [-1.18, -0.92, -0.48, 0.48, 0.92, 1.18]
+        : [-1.08, -0.78, -0.36, 0.36, 0.78, 1.08]);
     let bestOffset = candidateOffsets[0];
     let bestGap = -1;
 
@@ -294,6 +309,21 @@
     return payload;
   }
 
+  function runVarietyAdjustPlaceBranchConfig(config){
+    if (!config || !varietyState.active) return config;
+    if (varietyState.active.id !== 'forked_paths') return config;
+
+    const mobilePortrait = isMobilePortraitVariety();
+    const phase = typeof getPhase === 'function' ? Number(getPhase()) || 1 : 1;
+    const scorePressure = clamp((Number(score) - 18) / 60, 0, 1);
+    const spreadBoost = mobilePortrait ? (1.16 + scorePressure * 0.10 + Math.max(0, phase - 2) * 0.03) : 1.08;
+
+    config.baseDist *= spreadBoost;
+    config.minSpacing += mobilePortrait ? 26 : 14;
+    config.angleJitter *= mobilePortrait ? 0.72 : 0.82;
+    return config;
+  }
+
   function drawRunMutatorBadge(){
     const active = varietyState.active;
     if (!active || state !== ST.PLAY) return;
@@ -351,6 +381,7 @@
     registerOrbitaGameplayHook('adjustComboWindow', runVarietyAdjustComboWindow);
     registerOrbitaGameplayHook('adjustOrbitSpeed', runVarietyAdjustOrbitSpeed);
     registerOrbitaGameplayHook('adjustGravityStrength', runVarietyAdjustGravityStrength);
+    registerOrbitaGameplayHook('adjustPlaceBranchConfig', runVarietyAdjustPlaceBranchConfig);
   }
 
   if (typeof reset === 'function') {

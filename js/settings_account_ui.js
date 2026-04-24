@@ -207,8 +207,11 @@ function drawSettingsMenuModule(){
   const viewport = beginMenuScrollClip();
   const contentStartY = Math.max(H*0.14, (viewport ? viewport.top + 10 : H*0.14));
   let curY = contentStartY;
-  const contentW = Math.min(W*0.85, 320);
-  const contentX = (W-contentW)/2;
+  const shellLeft = viewport && typeof viewport.left === 'number' ? viewport.left : 14;
+  const shellRight = viewport && typeof viewport.right === 'number' ? viewport.right : (W - 14);
+  const shellW = shellRight - shellLeft;
+  const contentW = Math.min(shellW - 10, W <= 560 ? 344 : 320);
+  const contentX = shellLeft + (shellW - contentW)/2;
 
   // Conta
   X.fillStyle='#ff6b9d';

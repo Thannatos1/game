@@ -182,8 +182,9 @@
 
   function getDisplayTitle(){
     const rank = currentUserRank();
+    const compactMobile = W <= 560 && H >= W * 1.25;
     if (!rank) return 'PERTO DE VOCE';
-    if (rank === 1) return 'QUEM ESTA TE CACANDO';
+    if (rank === 1) return compactMobile ? 'CACADORES' : 'QUEM ESTA TE CACANDO';
     if (rank <= 3) return 'RIVAIS DO PODIO';
     return 'PERTO DE VOCE';
   }
@@ -504,7 +505,7 @@
     X.fillStyle = tag ? tag.color : 'rgba(255,255,255,0.52)';
     X.font = '10px -apple-system, system-ui, sans-serif';
     if (tag) X.fillText(tag.text, x + 82, y + h / 2 + 9);
-    else X.fillText(mode === 'top' ? 'TOP GLOBAL' : getDisplayTitle(), x + 82, y + h / 2 + 9);
+    else X.fillText(mode === 'top' ? (W <= 560 ? 'TOP' : 'TOP GLOBAL') : getDisplayTitle(), x + 82, y + h / 2 + 9);
 
     X.textAlign = 'right';
     X.fillStyle = '#fff';
@@ -548,6 +549,7 @@
   function drawRivalPanel(x, y, w){
     const panel = getRivalPanelData();
     if (!panel || (!panel.primary && !panel.secondary)) return 0;
+    const compactMobile = W <= 560 && H >= W * 1.25;
 
     X.textAlign = 'left';
     X.textBaseline = 'middle';
@@ -563,6 +565,12 @@
     const cardH = 52;
 
     if (panel.primary && panel.secondary) {
+      if (compactMobile) {
+        drawRivalMiniCard(panel.primary, x, cardsY, w, cardH);
+        drawRivalMiniCard(panel.secondary, x, cardsY + cardH + 8, w, cardH);
+        return 140;
+      }
+
       const gap = 10;
       const cardW = (w - gap) / 2;
       drawRivalMiniCard(panel.primary, x, cardsY, cardW, cardH);
@@ -694,8 +702,10 @@
     }
 
     const viewport = beginMenuScrollClip();
-    const sx = 15;
-    const sw = W - 30;
+    const shellLeft = viewport && typeof viewport.left === 'number' ? viewport.left : 14;
+    const shellRight = viewport && typeof viewport.right === 'number' ? viewport.right : (W - 14);
+    const sx = shellLeft + 6;
+    const sw = Math.max(240, shellRight - shellLeft - 12);
     const contentStartY = Math.max(H * 0.16, (viewport ? viewport.top + 12 : H * 0.16));
     let y = contentStartY;
     const objective = getObjectiveState();

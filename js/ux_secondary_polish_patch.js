@@ -40,10 +40,11 @@
   }
 
   function getStageRect(meta){
-    const margin = 14;
+    const mobile = isSecondaryHeaderCompactMobile();
+    const margin = mobile ? 8 : 14;
     const w = meta && meta.width ? Math.min(W - margin*2, meta.width) : (W - margin*2);
     const y = H * ((meta && meta.stageY) ? meta.stageY : 0.11);
-    return { x:(W-w)/2, y, w, h:H*0.82 };
+    return { x:(W-w)/2, y, w, h:H*(mobile ? 0.835 : 0.82) };
   }
 
   function drawSecondaryStage(meta){
@@ -171,18 +172,20 @@
   }
 
   function getContentRect(width){
-    const w = Math.min(W-28, width);
+    const mobile = isSecondaryHeaderCompactMobile();
+    const w = Math.min(W-(mobile ? 16 : 28), width);
     return { x:(W-w)/2, w };
   }
 
   function getInnerShellViewport(screen){
     const meta = getSecondaryMeta ? getSecondaryMeta() : null;
     const rect = getStageRect(meta || null);
-    const topInset = (screen === 'debug') ? 26 : 22;
-    const bottomInset = (screen === 'debug') ? 74 : 66;
+    const mobile = isSecondaryHeaderCompactMobile();
+    const topInset = (screen === 'debug') ? (mobile ? 22 : 26) : (mobile ? 18 : 22);
+    const bottomInset = (screen === 'debug') ? (mobile ? 62 : 74) : (mobile ? 54 : 66);
     return {
-      left: rect.x + 6,
-      right: rect.x + rect.w - 6,
+      left: rect.x + (mobile ? 2 : 6),
+      right: rect.x + rect.w - (mobile ? 2 : 6),
       top: rect.y + topInset,
       bottom: rect.y + rect.h - bottomInset
     };
@@ -211,9 +214,12 @@
       const skinsByRarity={common:[],rare:[],legendary:[],stellar:[]};
       for(const k in SKINS) skinsByRarity[SKINS[k].rarity].push(k);
 
+      const mobile = isSecondaryHeaderCompactMobile();
       const box = getContentRect(520);
-      const itemSize=70, gap=12;
-      const cols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
+      const itemSize=mobile ? 74 : 70;
+      const gap=mobile ? 14 : 12;
+      const naturalCols=Math.max(1, Math.floor((box.w+gap)/(itemSize+gap)));
+      const cols=mobile ? Math.min(3, naturalCols) : naturalCols;
       const gridW = cols*(itemSize+gap)-gap;
       const headerX = box.x + 4;
       const viewport = beginMenuScrollClip();

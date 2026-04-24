@@ -128,12 +128,17 @@ function drawDebugMenu(){
   drawBackBtn();
 
   const contentW = Math.min(W*0.88, 360);
-  const contentX = (W-contentW)/2;
   const viewport = beginMenuScrollClip();
   const contentStartY = Math.max(H*0.13, (viewport ? viewport.top + 10 : H*0.13));
+  const shellLeft = viewport && typeof viewport.left === 'number' ? viewport.left : 14;
+  const shellRight = viewport && typeof viewport.right === 'number' ? viewport.right : (W - 14);
+  const shellW = shellRight - shellLeft;
+  const adjustedContentW = Math.min(shellW - 10, W <= 560 ? 372 : contentW);
+  const contentX = shellLeft + (shellW - adjustedContentW)/2;
+  const contentWidth = adjustedContentW;
   let curY = contentStartY;
 
-  drawDebugCard(contentX,curY,contentW,60);
+  drawDebugCard(contentX,curY,contentWidth,60);
   X.fillStyle='rgba(255,255,255,0.86)';
   X.font='bold 12px -apple-system, system-ui, sans-serif';
   X.textAlign='left';
@@ -146,29 +151,29 @@ function drawDebugMenu(){
   drawDebugSectionTitle(contentX, curY, 'RUN RÁPIDA', '#00f5d4');
   curY += 14;
   const gap=10;
-  const halfW=(contentW-gap)/2;
+  const halfW=(contentWidth-gap)/2;
   drawDebugActionBtn(contentX,curY,halfW,36,'▶ NORMAL','#00f5d4',()=>startRun(false,'debug_normal'),false);
   drawDebugActionBtn(contentX+halfW+gap,curY,halfW,36,'☯ ZEN','#7bed9f',()=>startRun(true,'debug_zen'),false);
   curY += 44;
-  drawDebugActionBtn(contentX,curY,contentW,36,'🧪 TESTE SEM ERRO','#ffd32a',()=>startTestRun('debug_test'),false);
+  drawDebugActionBtn(contentX,curY,contentWidth,36,'🧪 TESTE SEM ERRO','#ffd32a',()=>startTestRun('debug_test'),false);
   curY += 52;
 
   drawDebugSectionTitle(contentX, curY, 'ÁUDIO', '#70a1ff');
   curY += 14;
   const hasSplitMusic=(typeof menuMusicVol !== 'undefined') && (typeof gameMusicVol !== 'undefined');
   if(hasSplitMusic){
-    drawVolumeStepper(contentX,curY,contentW,'Música do menu',menuMusicVol,(v)=>{ menuMusicVol=v; musicVol=v; if(typeof refreshMusicGain==='function') refreshMusicGain(0.08); if(typeof saveData==='function') saveData(); }, '#70a1ff');
+    drawVolumeStepper(contentX,curY,contentWidth,'Música do menu',menuMusicVol,(v)=>{ menuMusicVol=v; musicVol=v; if(typeof refreshMusicGain==='function') refreshMusicGain(0.08); if(typeof saveData==='function') saveData(); }, '#70a1ff');
     curY += 48;
-    drawVolumeStepper(contentX,curY,contentW,'Música do jogo',gameMusicVol,(v)=>{ gameMusicVol=v; if(typeof saveData==='function') saveData(); }, '#00f5d4');
+    drawVolumeStepper(contentX,curY,contentWidth,'Música do jogo',gameMusicVol,(v)=>{ gameMusicVol=v; if(typeof saveData==='function') saveData(); }, '#00f5d4');
     curY += 48;
   } else {
-    drawVolumeStepper(contentX,curY,contentW,'Música',musicVol,(v)=>{ musicVol=v; if(typeof refreshMusicGain==='function') refreshMusicGain(0.08); else if(typeof setMusicVolume==='function') setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75); if(typeof saveData==='function') saveData(); }, '#70a1ff');
+    drawVolumeStepper(contentX,curY,contentWidth,'Música',musicVol,(v)=>{ musicVol=v; if(typeof refreshMusicGain==='function') refreshMusicGain(0.08); else if(typeof setMusicVolume==='function') setMusicVolume(typeof musicSceneLevel !== 'undefined' ? musicSceneLevel : 0.75); if(typeof saveData==='function') saveData(); }, '#70a1ff');
     curY += 48;
   }
-  drawVolumeStepper(contentX,curY,contentW,'Efeitos',sfxVol,(v)=>{ sfxVol=v; if(typeof saveData==='function') saveData(); }, '#c084fc');
+  drawVolumeStepper(contentX,curY,contentWidth,'Efeitos',sfxVol,(v)=>{ sfxVol=v; if(typeof saveData==='function') saveData(); }, '#c084fc');
   curY += 52;
   const testLabels=[['RELEASE','release','#70a1ff'],['CAPTURA','capture','#00f5d4'],['OURO','gold','#ffd32a'],['FASE','phase','#ff6b9d'],['MORTE','die','#ff4757'],['RECORDE','record','#c084fc']];
-  const testW=(contentW-gap*2)/3;
+  const testW=(contentWidth-gap*2)/3;
   for(let i=0;i<testLabels.length;i++){
     const row=Math.floor(i/3), col=i%3;
     const x=contentX+col*(testW+gap), y=curY+row*42;
@@ -182,7 +187,7 @@ function drawDebugMenu(){
   const bgKeys=Object.keys(BACKGROUNDS||{});
   const bgCols=2;
   const bgGap=10;
-  const bgW=(contentW-bgGap)/2;
+  const bgW=(contentWidth-bgGap)/2;
   const bgH=46;
   for(let i=0;i<bgKeys.length;i++){
     const k=bgKeys[i];
@@ -215,7 +220,7 @@ function drawDebugMenu(){
   drawDebugActionBtn(contentX,curY,halfW,34,'SKINS','#c084fc',()=>debugUnlockAllSkins(),false);
   drawDebugActionBtn(contentX+halfW+gap,curY,halfW,34,'FUNDOS','#70a1ff',()=>debugUnlockAllBackgrounds(),false);
   curY += 44;
-  drawDebugActionBtn(contentX,curY,contentW,36,'RESETAR PROGRESSO LOCAL','#ff4757',()=>{ if(confirm('Apagar progresso local de teste?')) resetLocalProgress(); },false);
+  drawDebugActionBtn(contentX,curY,contentWidth,36,'RESETAR PROGRESSO LOCAL','#ff4757',()=>{ if(confirm('Apagar progresso local de teste?')) resetLocalProgress(); },false);
   curY += 50;
 
   drawDebugSectionTitle(contentX, curY, 'ATALHOS', '#7bed9f');

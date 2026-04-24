@@ -110,6 +110,78 @@
     };
   }
 
+  function getTierRiskRank(tier){
+    switch (tier) {
+      case 'easy': return 0;
+      case 'medium': return 1;
+      case 'hard': return 2;
+      case 'gold': return 3;
+      default: return 10;
+    }
+  }
+
+  function getCanonicalBranchOffsets(count){
+    const mobilePortrait = isMobilePortraitGameplay();
+    if (count >= 4) {
+      return mobilePortrait ? [-1.24, -0.40, 0.40, 1.24] : [-1.14, -0.34, 0.34, 1.14];
+    }
+    if (count === 3) {
+      return mobilePortrait ? [-1.16, 0, 1.16] : [-1.04, 0, 1.04];
+    }
+    return mobilePortrait ? [-1.08, 1.08] : [-0.94, 0.94];
+  }
+
+  function getTierDistanceLayoutMul(tier, phase){
+    const mobilePortrait = isMobilePortraitGameplay();
+    const phasePressure = clampValue((phase - 1) / 5, 0, 1);
+    const map = {
+      easy: mobilePortrait ? 1.00 : 1.00,
+      medium: mobilePortrait ? (1.07 + phasePressure * 0.03) : (1.05 + phasePressure * 0.02),
+      hard: mobilePortrait ? (1.14 + phasePressure * 0.05) : (1.10 + phasePressure * 0.04),
+      gold: mobilePortrait ? (1.20 + phasePressure * 0.06) : (1.16 + phasePressure * 0.05)
+    };
+    return map[tier] || 1;
+  }
+
+  function repositionCanonicalBranch(fromNode, branch, phase, targetOffset){
+    if (!fromNode || !branch) return branch;
+
+    const currentDistance = dist(fromNode.x, fromNode.y, branch.x, branch.y) || 220;
+    const distanceTarget = currentDistance * getTierDistanceLayoutMul(branch.tier, phase);
+    const angle = -Math.PI/2 + targetOffset;
+    let nx = fromNode.x + Math.cos(angle) * distanceTarget;
+    let ny = fromNode.y + Math.sin(angle) * distanceTarget;
+
+    const adjusted = clampSpawnToMobileSafeZone(nx, ny, fromNode, phase, branch.tier);
+    nx = adjusted.x;
+    ny = adjusted.y;
+
+    branch.x = nx;
+    branch.y = ny;
+    branch.baseX = nx;
+    branch.baseY = ny;
+    return branch;
+  }
+
+  function applyCanonicalPhaseLayout(fromNode, branches, phase){
+    if (!fromNode || !Array.isArray(branches) || branches.length < 2) return branches;
+
+    const ordered = branches
+      .slice()
+      .sort((a, b) => {
+        const riskDiff = getTierRiskRank(a && a.tier) - getTierRiskRank(b && b.tier);
+        if (riskDiff !== 0) return riskDiff;
+        return (a && a.pts || 0) - (b && b.pts || 0);
+      });
+    const offsets = getCanonicalBranchOffsets(ordered.length);
+
+    ordered.forEach((branch, idx) => {
+      repositionCanonicalBranch(fromNode, branch, phase, offsets[idx] ?? 0);
+    });
+
+    return branches;
+  }
+
   function canPlaceAsteroid(ax, ay, fromNode, targetNode){
     if (!fromNode || !targetNode) return false;
     if (dist(ax, ay, fromNode.x, fromNode.y) < 42) return false;
@@ -253,6 +325,7 @@
     }
 
     limitBranchHazards(branches, phase);
+    applyCanonicalPhaseLayout(fromNode, branches, phase);
 
     if (phase >= 4 && !zenMode && score >= 35) {
       let asteroidsAdded = 0;

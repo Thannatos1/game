@@ -5,6 +5,7 @@ const servicesAppStorage = window.App && window.App.storage ? window.App.storage
 const servicesAppServiceRegistry = window.App && window.App.services ? window.App.services : null;
 const SUPABASE_URL = servicesAppConfig.supabase && servicesAppConfig.supabase.url ? servicesAppConfig.supabase.url : 'https://poedjpfrwpdsdjjjduow.supabase.co';
 const SUPABASE_KEY = servicesAppConfig.supabase && servicesAppConfig.supabase.anonKey ? servicesAppConfig.supabase.anonKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvZWRqcGZyd3Bkc2RqampkdW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTgyNTksImV4cCI6MjA5MTU5NDI1OX0.6D0p4m9QPBPSlICDEMb2Y8umJpETbQ3FpInfwmpN-9o';
+const isLocalPreviewHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname || '');
 
 function getLocalText(key) {
   if (servicesAppStorage && typeof servicesAppStorage.getLocalText === 'function') return servicesAppStorage.getLocalText(key);
@@ -107,6 +108,7 @@ function removeSession(key) {
 let sb = null;
 function initSupabase() {
   if (sb) return sb;
+  if (isLocalPreviewHost) return null;
   if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
     try {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -142,6 +144,11 @@ const RUN_SESSION_KEY = servicesAppStorageKeys.runSession || 'orbita_run_session
 let activeRunSession = null;
 
 const PROFILE_NAME_CACHE_KEY = servicesAppStorageKeys.profileNameCache || 'orbita_profile_name_cache';
+const PLAYER_ML_PROFILE_CACHE_KEY = servicesAppStorageKeys.playerMlProfileCache || 'orbita_player_ml_profile_cache';
+let playerMlProfile = null;
+let playerMlProfileOwnerId = '';
+let playerMlProfileFetchedAt = 0;
+let playerMlProfileLoading = false;
 
 function getCachedProfileName() {
   try {
@@ -159,6 +166,120 @@ function setCachedProfileName(name) {
     if (value) setLocalText(PROFILE_NAME_CACHE_KEY, value);
     else removeLocal(PROFILE_NAME_CACHE_KEY);
   } catch (e) {}
+}
+
+function syncWindowPlayerMlProfile() {
+  try {
+    window.__orbitaPlayerMlProfile = getCachedPlayerMlProfile();
+  } catch (e) {}
+}
+
+function loadCachedPlayerMlProfile() {
+  try {
+    const cached = getLocalJson(PLAYER_ML_PROFILE_CACHE_KEY, null);
+    if (!cached || typeof cached !== 'object') {
+      playerMlProfile = null;
+      playerMlProfileOwnerId = '';
+      playerMlProfileFetchedAt = 0;
+      syncWindowPlayerMlProfile();
+      return;
+    }
+
+    const profile = cached.profile && typeof cached.profile === 'object' ? cached.profile : cached;
+    playerMlProfile = profile && typeof profile === 'object' ? profile : null;
+    playerMlProfileOwnerId = String(cached.user_id || cached.owner_id || '').trim();
+    playerMlProfileFetchedAt =
+      Number(cached.fetched_at || cached.fetchedAt || 0) ||
+      Date.parse(String(cached.fetched_at_iso || '')) ||
+      0;
+  } catch (e) {
+    playerMlProfile = null;
+    playerMlProfileOwnerId = '';
+    playerMlProfileFetchedAt = 0;
+  }
+  syncWindowPlayerMlProfile();
+}
+
+function persistPlayerMlProfile() {
+  try {
+    if (playerMlProfile && typeof playerMlProfile === 'object' && playerMlProfile.ok) {
+      setLocalJson(PLAYER_ML_PROFILE_CACHE_KEY, {
+        user_id: playerMlProfileOwnerId || (currentUser && currentUser.id) || null,
+        fetched_at: playerMlProfileFetchedAt || Date.now(),
+        profile: playerMlProfile
+      });
+    } else {
+      removeLocal(PLAYER_ML_PROFILE_CACHE_KEY);
+    }
+  } catch (e) {}
+  syncWindowPlayerMlProfile();
+}
+
+function clearCachedPlayerMlProfile() {
+  playerMlProfile = null;
+  playerMlProfileOwnerId = '';
+  playerMlProfileFetchedAt = 0;
+  playerMlProfileLoading = false;
+  try {
+    removeLocal(PLAYER_ML_PROFILE_CACHE_KEY);
+  } catch (e) {}
+  syncWindowPlayerMlProfile();
+}
+
+function adoptCachedPlayerMlProfileForCurrentUser() {
+  if (!currentUser || !currentUser.id) {
+    syncWindowPlayerMlProfile();
+    return null;
+  }
+  if (playerMlProfileOwnerId && playerMlProfileOwnerId !== currentUser.id) {
+    clearCachedPlayerMlProfile();
+    return null;
+  }
+  if (!playerMlProfileOwnerId && playerMlProfile) {
+    playerMlProfileOwnerId = currentUser.id;
+    persistPlayerMlProfile();
+  } else {
+    syncWindowPlayerMlProfile();
+  }
+  return playerMlProfile;
+}
+
+function isPlayerMlProfileFresh(maxAgeMinutes = 60) {
+  if (!playerMlProfile || !playerMlProfileFetchedAt) return false;
+  const maxAgeMs = Math.max(5, Math.min(Number(maxAgeMinutes) || 60, 240)) * 60 * 1000;
+  return (Date.now() - playerMlProfileFetchedAt) < maxAgeMs;
+}
+
+function getCachedPlayerMlProfile() {
+  if (!currentUser || !currentUser.id) return null;
+  if (playerMlProfileOwnerId && playerMlProfileOwnerId !== currentUser.id) return null;
+  return playerMlProfile;
+}
+
+async function refreshPlayerMlProfile(days = 14, opts = {}) {
+  if (!sb) initSupabase();
+  adoptCachedPlayerMlProfileForCurrentUser();
+  if (!sb || !currentUser || !networkOnline) return getCachedPlayerMlProfile();
+  if (playerMlProfileLoading) return getCachedPlayerMlProfile();
+  if (!opts.force && isPlayerMlProfileFresh(opts.maxAgeMinutes || 60)) {
+    return getCachedPlayerMlProfile();
+  }
+
+  playerMlProfileLoading = true;
+  try {
+    const data = await getPlayerMlProfile(days);
+    if (data && typeof data === 'object' && data.ok) {
+      playerMlProfile = data;
+      playerMlProfileOwnerId = currentUser.id;
+      playerMlProfileFetchedAt = Date.now();
+      persistPlayerMlProfile();
+    }
+    return getCachedPlayerMlProfile();
+  } catch (e) {
+    return getCachedPlayerMlProfile();
+  } finally {
+    playerMlProfileLoading = false;
+  }
 }
 
 // Analytics
@@ -376,6 +497,7 @@ async function flushAnalyticsQueue(force = false) {
 loadAnalyticsQueue();
 loadPendingScoreSubmission();
 loadRunSession();
+loadCachedPlayerMlProfile();
 
 // Initialize auth on load
 async function initAuth() {
@@ -403,6 +525,7 @@ async function initAuth() {
     console.log('[Orbita] Session:', !!session);
     if (session && session.user) {
       currentUser = session.user;
+      adoptCachedPlayerMlProfileForCurrentUser();
       const cachedName = getCachedProfileName();
       if (cachedName) {
         playerName = cachedName;
@@ -419,6 +542,7 @@ async function initAuth() {
       trackEvent('auth_signed_in', { has_nickname: !!playerName });
       scheduleAnalyticsFlush(400);
       flushPendingScoreSubmission();
+      refreshPlayerMlProfile(14, { maxAgeMinutes: 20 });
     } else {
       menuScreen = 'main';
       authLoading = false;
@@ -483,6 +607,7 @@ async function signOut() {
     currentUser = null;
     playerName = '';
     setCachedProfileName('');
+    clearCachedPlayerMlProfile();
     needsNickname = false;
     clearActiveRunSession();
     menuScreen = 'main';
@@ -501,6 +626,8 @@ async function startServerRunSession(mode = 'normal', source = 'unknown') {
   if (!sb || !currentUser || !networkOnline) {
     return null;
   }
+
+  refreshPlayerMlProfile(14, { maxAgeMinutes: 15 });
 
   try {
     const { data, error } = await sb.rpc('start_run_session', {
@@ -715,6 +842,21 @@ async function loadRankings() {
   rankingsLoading = false;
 }
 
+async function getPlayerMlProfile(days = 14) {
+  if (!sb) initSupabase();
+  if (!sb || !currentUser) return null;
+  try {
+    const { data, error } = await sb.rpc('get_player_ml_profile', {
+      p_days: Math.max(3, Math.min(Number(days) || 14, 90))
+    });
+    if (error) throw error;
+    return data || null;
+  } catch (e) {
+    console.error('get_player_ml_profile failed', e);
+    return null;
+  }
+}
+
 async function deleteAccount() {
   if (!sb || !currentUser) return false;
 
@@ -730,6 +872,7 @@ async function deleteAccount() {
     removeLocal(servicesAppStorageKeys.save || 'orbita_save');
     setCachedProfileName('');
     removeLocal(ANALYTICS_QUEUE_KEY);
+    clearCachedPlayerMlProfile();
     clearActiveRunSession();
     removeSession(RUN_SESSION_KEY);
 
@@ -793,6 +936,7 @@ if (sb) {
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
+      adoptCachedPlayerMlProfileForCurrentUser();
       const cachedName = getCachedProfileName();
       if (cachedName) {
         playerName = cachedName;
@@ -805,10 +949,12 @@ if (sb) {
       trackEvent('auth_signed_in', { has_nickname: !!playerName });
       scheduleAnalyticsFlush(400);
       flushPendingScoreSubmission();
+      refreshPlayerMlProfile(14, { maxAgeMinutes: 20 });
     } else if (event === 'SIGNED_OUT') {
       currentUser = null;
       playerName = '';
       setCachedProfileName('');
+      clearCachedPlayerMlProfile();
       needsNickname = false;
       clearActiveRunSession();
       menuScreen = 'login';
@@ -829,6 +975,7 @@ window.addEventListener('online', () => {
   setNetworkOnlineStatus(true);
   scheduleAnalyticsFlush(250);
   flushPendingScoreSubmission();
+  if (currentUser) refreshPlayerMlProfile(14, { maxAgeMinutes: 10 });
   if (menuScreen === 'ranking') loadRankings();
 });
 
@@ -858,6 +1005,9 @@ if (servicesAppServiceRegistry && typeof servicesAppServiceRegistry.register ===
   servicesAppServiceRegistry.register('trackEvent', trackEvent);
   servicesAppServiceRegistry.register('flushAnalyticsQueue', flushAnalyticsQueue);
   servicesAppServiceRegistry.register('loadRankings', loadRankings);
+  servicesAppServiceRegistry.register('getPlayerMlProfile', getPlayerMlProfile);
+  servicesAppServiceRegistry.register('refreshPlayerMlProfile', refreshPlayerMlProfile);
+  servicesAppServiceRegistry.register('getCachedPlayerMlProfile', getCachedPlayerMlProfile);
   servicesAppServiceRegistry.register('submitScore', submitScore);
   servicesAppServiceRegistry.register('saveNickname', saveNickname);
   servicesAppServiceRegistry.register('changeNickname', changeNickname);

@@ -85,6 +85,7 @@
     storageKeys: Object.assign({
       save: 'orbita_save',
       profileNameCache: 'orbita_profile_name_cache',
+      playerMlProfileCache: 'orbita_player_ml_profile_cache',
       analyticsQueue: 'orbita_analytics_queue',
       analyticsSession: 'orbita_analytics_session_id',
       pendingScore: 'orbita_pending_score',

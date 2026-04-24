@@ -36,14 +36,19 @@ function applyOrbitaGameplayHooks(name, payload){
 window.registerOrbitaGameplayHook = registerOrbitaGameplayHook;
 
 function getSafeCurrentNode(){
-  if (Array.isArray(nodes) && nodes[ball.currentNode]) return nodes[ball.currentNode];
+  const safeIdx = getSafeCurrentNodeIndex();
+  return safeIdx >= 0 ? nodes[safeIdx] : null;
+}
+
+function getSafeCurrentNodeIndex(){
+  if (Array.isArray(nodes) && Number.isInteger(ball.currentNode) && nodes[ball.currentNode]) return ball.currentNode;
   if (Array.isArray(nodes)) {
     for (let i = 0; i < nodes.length; i++) {
-      if (nodes[i] && nodes[i].captured) return nodes[i];
+      if (nodes[i] && nodes[i].captured) return i;
     }
-    return nodes[0] || null;
+    return nodes.length ? 0 : -1;
   }
-  return null;
+  return -1;
 }
 function getCaptureR(tier){
   const base = {easy:62,medium:50,hard:38,gold:34};
@@ -108,7 +113,7 @@ const ORBIT_R_MIN=36,ORBIT_R_MAX=52;
 
 // Node tiers
 const TIERS={
-  easy:  {color:{main:'#2ed573',glow:'#20bf55',light:'#7bed9f'},pts:1,label:'+1',distMul:1.0,sizeMul:1.15},
+  easy:  {color:{main:'#2ed573',glow:'#20bf55',light:'#7bed9f'},pts:1,label:'+1',distMul:1.0,sizeMul:1.0},
   medium:{color:{main:'#70a1ff',glow:'#1e90ff',light:'#90b8ff'},pts:2,label:'+2',distMul:1.1,sizeMul:1.0},
   hard:  {color:{main:'#ff4757',glow:'#e03050',light:'#ff6b7a'},pts:3,label:'+3',distMul:1.55,sizeMul:0.8},
   gold:  {color:{main:'#ffd32a',glow:'#f0c000',light:'#ffe066'},pts:5,label:'+5',distMul:1.75,sizeMul:0.7},
@@ -1114,7 +1119,13 @@ function update(dt){
   }
 
   if(ball.orbiting){
-    const n=nodes[ball.currentNode];
+    const safeIdx = getSafeCurrentNodeIndex();
+    const n = safeIdx >= 0 ? nodes[safeIdx] : null;
+    if(!n){
+      ball.orbiting = false;
+      return;
+    }
+    ball.currentNode = safeIdx;
     ball.angle+=ball.orbitDir*getOrbitSpeed()*dt;
     ball.x=n.x+Math.cos(ball.angle)*ball.orbitRadius;
     ball.y=n.y+Math.sin(ball.angle)*ball.orbitRadius;
@@ -1217,9 +1228,10 @@ function update(dt){
         sx < -180 || sx > W + 180 ||
         sy < -180 || sy > H + 220
       );
+    if(i === ball.currentNode) continue;
     if((n.captured&&dist(n.x,n.y,ball.x,ball.y)>W*2) || offscreenCaptured){
       nodes.splice(i,1);
-      if(i<=ball.currentNode)ball.currentNode--;
+      if(i<ball.currentNode)ball.currentNode--;
     }
   }
   for(let i=asteroids.length-1;i>=0;i--){

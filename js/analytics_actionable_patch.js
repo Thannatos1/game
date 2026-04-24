@@ -17,6 +17,153 @@
     return Number.isFinite(n) ? n : fallback;
   }
 
+  function roundMetric(v, digits=2){
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    const factor = Math.pow(10, digits);
+    return Math.round(n * factor) / factor;
+  }
+
+  function tierRiskValue(tier){
+    switch (String(tier || 'unknown')) {
+      case 'easy': return 1;
+      case 'medium': return 2;
+      case 'hard': return 3;
+      case 'gold': return 4;
+      default: return 0;
+    }
+  }
+
+  function getBranchGroupNodes(groupId){
+    if (typeof nodes === 'undefined' || !Array.isArray(nodes)) return [];
+    return nodes
+      .filter(node => node && !node.captured && num(node.branchGroup, -1) === num(groupId, -1))
+      .slice();
+  }
+
+  function countByTier(branches, tier){
+    return branches.reduce((count, branch) => count + (String(branch && branch.tier || '') === tier ? 1 : 0), 0);
+  }
+
+  function getPairGapStats(branches){
+    let minGap = null;
+    let maxGap = null;
+    for (let i = 0; i < branches.length - 1; i++) {
+      for (let j = i + 1; j < branches.length; j++) {
+        const a = branches[i];
+        const b = branches[j];
+        const gap = Math.hypot(num(a && a.x) - num(b && b.x), num(a && a.y) - num(b && b.y));
+        if (!Number.isFinite(gap)) continue;
+        if (minGap === null || gap < minGap) minGap = gap;
+        if (maxGap === null || gap > maxGap) maxGap = gap;
+      }
+    }
+    return {
+      min_pair_gap: roundMetric(minGap || 0, 2),
+      max_pair_gap: roundMetric(maxGap || 0, 2)
+    };
+  }
+
+  function describeBranchOptions(fromNode, branches){
+    const originX = num(fromNode && fromNode.x);
+    const originY = num(fromNode && fromNode.y);
+    const options = branches.map((branch, idx) => {
+      const distance = Math.hypot(num(branch && branch.x) - originX, num(branch && branch.y) - originY);
+      const angleOffset = Math.atan2(num(branch && branch.y) - originY, num(branch && branch.x) - originX) + (Math.PI / 2);
+      return {
+        slot: idx + 1,
+        tier: String(branch && branch.tier || 'unknown'),
+        pts: num(branch && branch.pts),
+        distance: roundMetric(distance, 2),
+        angle_offset: roundMetric(angleOffset, 3),
+        moving: !!(branch && branch.moving),
+        disappearing: !!(branch && branch.disappearing),
+        teleporting: !!(branch && branch.teleporting),
+        risk: tierRiskValue(branch && branch.tier)
+      };
+    });
+
+    const distances = options.map(option => option.distance).filter(value => Number.isFinite(value));
+    const pairGapStats = getPairGapStats(branches);
+    return {
+      options,
+      min_distance: roundMetric(distances.length ? Math.min(...distances) : 0, 2),
+      max_distance: roundMetric(distances.length ? Math.max(...distances) : 0, 2),
+      distance_spread: roundMetric(distances.length ? (Math.max(...distances) - Math.min(...distances)) : 0, 2),
+      min_pair_gap: pairGapStats.min_pair_gap,
+      max_pair_gap: pairGapStats.max_pair_gap
+    };
+  }
+
+  function buildBranchOptionsPayload(fromNode, groupId, branches){
+    const described = describeBranchOptions(fromNode, branches);
+    return {
+      branch_group_id: num(groupId, -1),
+      branch_layout_id: ensureRunMetrics().client_run_id + ':' + String(num(groupId, -1)),
+      option_count: branches.length,
+      easy_count: countByTier(branches, 'easy'),
+      medium_count: countByTier(branches, 'medium'),
+      hard_count: countByTier(branches, 'hard'),
+      gold_count: countByTier(branches, 'gold'),
+      has_hard: branches.some(branch => String(branch && branch.tier || '') === 'hard'),
+      has_gold: branches.some(branch => String(branch && branch.tier || '') === 'gold'),
+      hazard_options: branches.filter(branch => !!(branch && (branch.moving || branch.disappearing || branch.teleporting))).length,
+      min_distance: described.min_distance,
+      max_distance: described.max_distance,
+      distance_spread: described.distance_spread,
+      min_pair_gap: described.min_pair_gap,
+      max_pair_gap: described.max_pair_gap,
+      options: described.options.map(({ risk, ...option }) => option)
+    };
+  }
+
+  function buildBranchChoicePayload(fromNode, selectedNode, branches){
+    if (!selectedNode || !branches.length) return null;
+
+    const described = describeBranchOptions(fromNode, branches);
+    const selectedTier = String(selectedNode.tier || 'unknown');
+    const selected = described.options.find(option =>
+      option.tier === selectedTier &&
+      option.pts === num(selectedNode.pts) &&
+      option.distance === roundMetric(Math.hypot(num(selectedNode.x) - num(fromNode && fromNode.x), num(selectedNode.y) - num(fromNode && fromNode.y)), 2)
+    ) || described.options.find(option => option.tier === selectedTier) || described.options[0];
+
+    const sortedByRisk = described.options.slice().sort((a, b) => (a.risk - b.risk) || (a.distance - b.distance));
+    const sortedByDistance = described.options.slice().sort((a, b) => (a.distance - b.distance) || (a.risk - b.risk));
+    const safest = sortedByDistance[0] || selected;
+    const farthest = sortedByDistance[sortedByDistance.length - 1] || selected;
+    const highestRisk = sortedByRisk[sortedByRisk.length - 1] || selected;
+
+    return {
+      branch_group_id: num(selectedNode.branchGroup, -1),
+      branch_layout_id: ensureRunMetrics().client_run_id + ':' + String(num(selectedNode.branchGroup, -1)),
+      option_count: branches.length,
+      easy_count: countByTier(branches, 'easy'),
+      medium_count: countByTier(branches, 'medium'),
+      hard_count: countByTier(branches, 'hard'),
+      gold_count: countByTier(branches, 'gold'),
+      hazard_options: branches.filter(branch => !!(branch && (branch.moving || branch.disappearing || branch.teleporting))).length,
+      selected_tier: selected.tier,
+      selected_points: selected.pts,
+      selected_distance: selected.distance,
+      selected_angle_offset: selected.angle_offset,
+      selected_rank_by_risk: sortedByRisk.findIndex(option => option === selected) + 1,
+      selected_rank_by_distance: sortedByDistance.findIndex(option => option === selected) + 1,
+      selected_distance_delta_to_safest: roundMetric(selected.distance - num(safest && safest.distance), 2),
+      safest_option_distance: num(safest && safest.distance),
+      farthest_option_distance: num(farthest && farthest.distance),
+      selected_is_highest_risk: selected === highestRisk,
+      selected_is_farthest: selected === farthest,
+      selected_has_hazard: !!(selected.moving || selected.disappearing || selected.teleporting),
+      selected_moving: !!selected.moving,
+      selected_disappearing: !!selected.disappearing,
+      selected_teleporting: !!selected.teleporting,
+      min_pair_gap: described.min_pair_gap,
+      max_pair_gap: described.max_pair_gap,
+      options: described.options.map(({ risk, ...option }) => option)
+    };
+  }
+
   function currentPhase(){
     try { return typeof getPhase === 'function' ? num(getPhase(), 1) : 1; }
     catch (e) { return 1; }
@@ -64,7 +211,14 @@
       pause_count: 0,
       first_release_done: false,
       last_score_milestone: 0,
-      death_reason: 'unknown'
+      death_reason: 'unknown',
+      branch_sets_seen: 0,
+      branch_choices: 0,
+      hard_offer_sets: 0,
+      gold_offer_sets: 0,
+      risky_choices: 0,
+      hazard_choices: 0,
+      tracked_branch_groups: Object.create(null)
     };
   }
 
@@ -104,6 +258,12 @@
       powerup_magnet: num(m.powerup_magnet),
       best_combo_run: Math.max(num(m.best_combo_run), num(typeof maxCombo !== 'undefined' ? maxCombo : 0), num(typeof combo !== 'undefined' ? combo : 0)),
       pause_count: num(m.pause_count),
+      branch_sets_seen: num(m.branch_sets_seen),
+      branch_choices: num(m.branch_choices),
+      hard_offer_sets: num(m.hard_offer_sets),
+      gold_offer_sets: num(m.gold_offer_sets),
+      risky_choices: num(m.risky_choices),
+      hazard_choices: num(m.hazard_choices),
       tutorial_step: num(typeof tutorialStep !== 'undefined' ? tutorialStep : 0),
       selected_skin: (typeof selectedSkin !== 'undefined' ? selectedSkin : null),
       selected_bg: (typeof selectedBg !== 'undefined' ? selectedBg : null),
@@ -197,6 +357,29 @@
     };
   }
 
+  if (typeof spawnBranches === 'function') {
+    const _spawnBranches = spawnBranches;
+    window.spawnBranches = function(fromNode, groupId){
+      const result = _spawnBranches.apply(this, arguments);
+      if (!runMetrics) return result;
+
+      const m = ensureRunMetrics();
+      const key = String(num(groupId, -1));
+      if (m.tracked_branch_groups[key]) return result;
+
+      const branchNodes = getBranchGroupNodes(groupId);
+      if (!branchNodes.length) return result;
+
+      m.tracked_branch_groups[key] = true;
+      m.branch_sets_seen += 1;
+      if (branchNodes.some(branch => String(branch && branch.tier || '') === 'hard')) m.hard_offer_sets += 1;
+      if (branchNodes.some(branch => String(branch && branch.tier || '') === 'gold')) m.gold_offer_sets += 1;
+
+      safeTrack('branch_options_presented', buildBranchOptionsPayload(fromNode, groupId, branchNodes));
+      return result;
+    };
+  }
+
   if (typeof release === 'function') {
     const _release = release;
     window.release = function(){
@@ -216,8 +399,19 @@
     window.capture = function(nodeIdx){
       let tier = 'unknown';
       let prePhase = currentPhase();
+      const preScore = num(typeof score !== 'undefined' ? score : 0);
+      let branchChoicePayload = null;
       try {
-        if (typeof nodes !== 'undefined' && nodes[nodeIdx]) tier = String(nodes[nodeIdx].tier || 'unknown');
+        if (typeof nodes !== 'undefined' && nodes[nodeIdx]) {
+          const selectedNode = nodes[nodeIdx];
+          tier = String(selectedNode.tier || 'unknown');
+          const groupId = num(selectedNode.branchGroup, -1);
+          const fromNode = (typeof getSafeCurrentNode === 'function') ? getSafeCurrentNode() : ((typeof nodes !== 'undefined' && typeof ball !== 'undefined' && nodes[num(ball.currentNode, 0)]) ? nodes[num(ball.currentNode, 0)] : null);
+          const branchNodes = groupId >= 0 ? getBranchGroupNodes(groupId) : [];
+          if (fromNode && branchNodes.length) {
+            branchChoicePayload = buildBranchChoicePayload(fromNode, selectedNode, branchNodes);
+          }
+        }
       } catch (e) {}
       const result = _capture.apply(this, arguments);
       const m = ensureRunMetrics();
@@ -226,9 +420,19 @@
       else if (tier === 'medium') m.captures_medium += 1;
       else if (tier === 'hard') m.captures_hard += 1;
       else if (tier === 'gold') { m.captures_gold += 1; m.gold_captures += 1; }
+      m.branch_choices += 1;
+      if (tier === 'hard' || tier === 'gold') m.risky_choices += 1;
+      if (branchChoicePayload && branchChoicePayload.selected_has_hazard) m.hazard_choices += 1;
       m.best_combo_run = Math.max(num(m.best_combo_run), num(typeof combo !== 'undefined' ? combo : 0), num(typeof maxCombo !== 'undefined' ? maxCombo : 0));
       const phaseNow = currentPhase();
       m.phase_max = Math.max(num(m.phase_max, 1), phaseNow);
+      if (branchChoicePayload) {
+        branchChoicePayload.phase_before = prePhase;
+        branchChoicePayload.phase_after = phaseNow;
+        branchChoicePayload.score_before = preScore;
+        branchChoicePayload.score_after = num(typeof score !== 'undefined' ? score : 0);
+        safeTrack('branch_choice_made', branchChoicePayload);
+      }
       if (tier === 'gold') {
         safeTrack('gold_capture', { tier, gained: num(typeof score !== 'undefined' ? score : 0) }, { urgent: true });
       }

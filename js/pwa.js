@@ -8,6 +8,7 @@ const pwaServiceWorkerPath = pwaAppConfig.serviceWorkerPath || './sw.js';
 const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
 const canShowIosInstallHelp = isIosDevice && !isStandaloneApp;
+const isLocalPreviewHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname || '');
 
 function updatePwaStatusText() {
   if (isStandaloneApp) {
@@ -53,6 +54,8 @@ async function promptInstallApp() {
 }
 
 function initPWA() {
+  if (isLocalPreviewHost) return;
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register(pwaServiceWorkerPath).then(() => {

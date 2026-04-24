@@ -40,9 +40,11 @@ function orbitaMenuShell_getMenuScrollViewport(){
 function orbitaMenuShell_beginMenuScrollClip(){
   const vp = orbitaMenuShell_getMenuScrollViewport();
   if(!vp) return null;
+  const left = typeof vp.left === 'number' ? vp.left : 0;
+  const right = typeof vp.right === 'number' ? vp.right : W;
   X.save();
   X.beginPath();
-  X.rect(0, vp.top, W, vp.bottom - vp.top);
+  X.rect(left, vp.top, right - left, vp.bottom - vp.top);
   X.clip();
   X.translate(0, menuScrollY);
   return vp;
@@ -66,7 +68,9 @@ function orbitaMenuShell_canStartMenuScroll(x,y){
   if(!orbitaMenuShell_isMenuScreenScrollable()) return false;
   const vp = orbitaMenuShell_getMenuScrollViewport();
   if(!vp) return false;
-  return y >= vp.top && y <= vp.bottom;
+  const left = typeof vp.left === 'number' ? vp.left : 0;
+  const right = typeof vp.right === 'number' ? vp.right : W;
+  return x >= left && x <= right && y >= vp.top && y <= vp.bottom;
 }
 
 function orbitaMenuShell_applyMenuScrollGesture(deltaY){
@@ -82,7 +86,8 @@ function orbitaMenuShell_wheelMenuScroll(deltaY){
 
 function orbitaMenuShell_drawMenuScrollBar(viewport){
   if(!viewport || menuScrollMinY >= -2) return;
-  const trackX = W - 10;
+  const right = typeof viewport.right === 'number' ? viewport.right : W;
+  const trackX = right - 10;
   const trackY = viewport.top + 8;
   const trackH = viewport.bottom - viewport.top - 16;
   const viewportH = viewport.bottom - viewport.top;
@@ -106,19 +111,22 @@ function orbitaMenuShell_drawMenuScrollBar(viewport){
 function orbitaMenuShell_drawMenuScrollFades(viewport){
   if(!viewport || menuScrollMinY >= -2) return;
   const fadeH = 24;
+  const left = typeof viewport.left === 'number' ? viewport.left : 0;
+  const right = typeof viewport.right === 'number' ? viewport.right : W;
+  const width = right - left;
   if(menuScrollY < -1){
     const tg = X.createLinearGradient(0, viewport.top, 0, viewport.top + fadeH);
     tg.addColorStop(0, 'rgba(3,4,20,0.92)');
     tg.addColorStop(1, 'rgba(3,4,20,0)');
     X.fillStyle = tg;
-    X.fillRect(0, viewport.top, W, fadeH);
+    X.fillRect(left, viewport.top, width, fadeH);
   }
   if(menuScrollY > menuScrollMinY + 1){
     const bg = X.createLinearGradient(0, viewport.bottom - fadeH, 0, viewport.bottom);
     bg.addColorStop(0, 'rgba(3,4,20,0)');
     bg.addColorStop(1, 'rgba(3,4,20,0.92)');
     X.fillStyle = bg;
-    X.fillRect(0, viewport.bottom - fadeH, W, fadeH);
+    X.fillRect(left, viewport.bottom - fadeH, width, fadeH);
   }
 }
 

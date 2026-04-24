@@ -2205,10 +2205,10 @@ function getBackTargetScreen(){
 
 function drawBackBtn(){
   const mobilePortrait = H > W;
-  const bw = mobilePortrait ? 82 : 84;
-  const bh = mobilePortrait ? 30 : 34;
-  const bx = mobilePortrait ? 14 : 18;
-  const by = mobilePortrait ? Math.max(58, H*0.085) : 18;
+  const bw = mobilePortrait ? 76 : 84;
+  const bh = mobilePortrait ? 28 : 34;
+  const bx = mobilePortrait ? 12 : 18;
+  const by = mobilePortrait ? 12 : 18;
   X.globalAlpha=0.86;
   X.fillStyle='rgba(0,0,0,0.68)';
   roundRect(bx,by,bw,bh,9);
@@ -2217,7 +2217,7 @@ function drawBackBtn(){
   roundRect(bx,by,bw,bh,9);
   X.stroke();
   X.fillStyle='#fff';
-  X.font=(mobilePortrait?'bold 12px':'bold 13px')+' -apple-system, system-ui, sans-serif';
+  X.font=(mobilePortrait?'bold 11px':'bold 13px')+' -apple-system, system-ui, sans-serif';
   X.textAlign='center';X.textBaseline='middle';
   X.fillText('← VOLTAR',bx+bw/2,by+bh/2);
   X.globalAlpha=1;
@@ -2403,6 +2403,14 @@ function drawInstallHelpScreen(){
 
 
 
+function getScrollableMenuAreaY(y){
+  return isMenuScreenScrollable() ? (y + menuScrollY) : y;
+}
+
+function pushScrollableMenuArea(x,y,w,h,action){
+  menuBtnAreas.push({x,y:getScrollableMenuAreaY(y),w,h,action});
+}
+
 function drawSettingsBtn(x,y,w,label,icon,color,action){
   const h=38;
   X.globalAlpha=0.7;
@@ -2434,7 +2442,7 @@ function drawSettingsBtn(x,y,w,label,icon,color,action){
   X.font='14px -apple-system, system-ui, sans-serif';
   X.fillText('›',x+w-14,y+h/2-1);
 
-  menuBtnAreas.push({x,y,w,h,action});
+  pushScrollableMenuArea(x,y,w,h,action);
 }
 
 function drawSlider(x,y,w,label,value,onChange){
@@ -2486,12 +2494,9 @@ function drawSlider(x,y,w,label,value,onChange){
   X.stroke();
 
   // Touch zone (bigger than visual)
-  menuBtnAreas.push({
-    x:x-5, y:trackY-15, w:w+10, h:36,
-    action:(tapX)=>{
-      const newV = clamp((tapX-x)/w, 0, 1);
-      onChange(newV);
-    }
+  pushScrollableMenuArea(x-5,trackY-15,w+10,36,(tapX)=>{
+    const newV = clamp((tapX-x)/w, 0, 1);
+    onChange(newV);
   });
 }
 
@@ -2530,7 +2535,7 @@ function drawToggle(x,y,w,label,isOn,action){
   X.fill();
   X.shadowBlur=0;
 
-  menuBtnAreas.push({x,y,w,h,action});
+  pushScrollableMenuArea(x,y,w,h,action);
 }
 
 
@@ -2585,7 +2590,7 @@ function drawMiniStepButton(x,y,size,label,color,action){
   X.font='bold 16px -apple-system, system-ui, sans-serif';
   X.textAlign='center'; X.textBaseline='middle';
   X.fillText(label,x+size/2,y+size/2+0.5);
-  menuBtnAreas.push({x,y,w:size,h:size,action});
+  pushScrollableMenuArea(x,y,size,size,action);
 }
 
 function drawDebugMenu(){

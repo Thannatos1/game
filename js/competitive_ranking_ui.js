@@ -693,9 +693,11 @@
       return;
     }
 
+    const viewport = beginMenuScrollClip();
     const sx = 15;
     const sw = W - 30;
-    let y = H * 0.16;
+    const contentStartY = Math.max(H * 0.16, (viewport ? viewport.top + 12 : H * 0.16));
+    let y = contentStartY;
     const objective = getObjectiveState();
 
     X.fillStyle = 'rgba(0,0,0,0.56)';
@@ -804,6 +806,12 @@
     X.fillStyle = 'rgba(255,255,255,0.42)';
     X.font = '10px -apple-system, system-ui, sans-serif';
     X.fillText(objective.sub, sx + 12, y + 49);
+
+    y += 68;
+    endMenuScrollClip();
+    setMenuScrollBounds(contentStartY, y, viewport);
+    drawMenuScrollBar(viewport);
+    drawMenuScrollFades(viewport);
   }
 
   window.loadCompetitiveRankings = loadCompetitiveRankings;

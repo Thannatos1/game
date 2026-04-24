@@ -204,7 +204,9 @@ function drawSettingsMenuModule(){
 
   drawBackBtn();
 
-  let curY = H*0.14;
+  const viewport = beginMenuScrollClip();
+  const contentStartY = Math.max(H*0.14, (viewport ? viewport.top + 10 : H*0.14));
+  let curY = contentStartY;
   const contentW = Math.min(W*0.85, 320);
   const contentX = (W-contentW)/2;
 
@@ -361,7 +363,10 @@ function drawSettingsMenuModule(){
     curY+=44;
   }
 
-  X.textAlign='center';
+  endMenuScrollClip();
+  setMenuScrollBounds(contentStartY, curY + 8, viewport);
+  drawMenuScrollBar(viewport);
+  drawMenuScrollFades(viewport);
 }
 window.drawSettingsMenuModule = drawSettingsMenuModule;
 

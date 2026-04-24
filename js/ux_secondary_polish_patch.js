@@ -181,6 +181,8 @@
     const topInset = (screen === 'debug') ? 26 : 22;
     const bottomInset = (screen === 'debug') ? 74 : 66;
     return {
+      left: rect.x + 6,
+      right: rect.x + rect.w - 6,
       top: rect.y + topInset,
       bottom: rect.y + rect.h - bottomInset
     };
@@ -427,15 +429,12 @@
   };
 
   getMenuScrollViewport = function(){
-    if(menuScreen === 'skins' || menuScreen === 'backgrounds' || menuScreen === 'debug'){
+    if(menuScreen === 'skins' || menuScreen === 'backgrounds' || menuScreen === 'debug' || menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking'){
       return getInnerShellViewport(menuScreen);
     }
     if(_origGetMenuScrollViewport){
       const vp = _origGetMenuScrollViewport();
       if(vp) return vp;
-    }
-    if(menuScreen === 'stats' || menuScreen === 'settings' || menuScreen === 'career' || menuScreen === 'ranking'){
-      return { top:H*0.135, bottom:H-18 };
     }
     return null;
   };

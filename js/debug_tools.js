@@ -129,9 +129,9 @@ function drawDebugMenu(){
 
   const contentW = Math.min(W*0.88, 360);
   const contentX = (W-contentW)/2;
-  let curY = H*0.13;
-  const contentStartY = curY;
   const viewport = beginMenuScrollClip();
+  const contentStartY = Math.max(H*0.13, (viewport ? viewport.top + 10 : H*0.13));
+  let curY = contentStartY;
 
   drawDebugCard(contentX,curY,contentW,60);
   X.fillStyle='rgba(255,255,255,0.86)';

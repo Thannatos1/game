@@ -339,8 +339,13 @@ function drawSettingsMenuModule(){
   curY+=44;
 
   // Instalação
-  if(!isStandaloneApp && (canInstallApp || canShowIosInstallHelp)){
-    drawSettingsBtn(contentX,curY,contentW,canInstallApp?'Instalar app':'Como instalar no iPhone','⬇','#7bed9f',()=>{
+  const standaloneApp = (typeof isStandaloneApp !== 'undefined') ? isStandaloneApp : false;
+  const installAvailable = (typeof canInstallApp !== 'undefined') ? canInstallApp : false;
+  const iosInstallHelp = (typeof canShowIosInstallHelp !== 'undefined') ? canShowIosInstallHelp : false;
+  const installStatusText = (typeof pwaStatusText !== 'undefined' && pwaStatusText) ? pwaStatusText : 'Abra no navegador do celular para instalar';
+  const canPromptInstall = typeof promptInstallApp === 'function';
+  if(!standaloneApp && canPromptInstall && (installAvailable || iosInstallHelp)){
+    drawSettingsBtn(contentX,curY,contentW,installAvailable?'Instalar app':'Como instalar no iPhone','⬇','#7bed9f',()=>{
       promptInstallApp();
     });
     curY+=44;
@@ -348,7 +353,7 @@ function drawSettingsMenuModule(){
     X.fillStyle='rgba(255,255,255,0.45)';
     X.font='10px -apple-system, system-ui, sans-serif';
     X.textAlign='left';
-    X.fillText(pwaStatusText||'Abra no navegador do celular para instalar',contentX,curY+4);
+    X.fillText(installStatusText,contentX,curY+4);
     curY+=24;
   }
 

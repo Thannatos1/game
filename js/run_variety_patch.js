@@ -179,6 +179,69 @@
     return branch;
   }
 
+  function clampNumber(value, min, max){
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function getResonanceOffsets(count, mobilePortrait){
+    if (count >= 4) {
+      return mobilePortrait ? [-1.18, -0.40, 0.40, 1.18] : [-1.08, -0.34, 0.34, 1.08];
+    }
+    if (count === 3) {
+      return mobilePortrait ? [-1.04, 0, 1.04] : [-0.96, 0, 0.96];
+    }
+    return mobilePortrait ? [-0.96, 0.96] : [-0.88, 0.88];
+  }
+
+  function getTreasureOffsets(count, mobilePortrait){
+    if (count >= 4) {
+      return mobilePortrait ? [-1.20, -0.46, 0.46, 1.20] : [-1.10, -0.40, 0.40, 1.10];
+    }
+    if (count === 3) {
+      return mobilePortrait ? [-1.10, 0, 1.10] : [-1.00, 0, 1.00];
+    }
+    return mobilePortrait ? [-1.02, 0.84] : [-0.94, 0.78];
+  }
+
+  function getVarietySafeBounds(fromNode){
+    if (!fromNode || !isMobilePortraitVariety()) return null;
+
+    const anchor = typeof getGameplayCameraAnchor === 'function'
+      ? (getGameplayCameraAnchor(false) || { x:0.5, y:0.5 })
+      : { x:0.5, y:0.5 };
+    const statusInset = ((typeof testMode !== 'undefined' && testMode) || zenMode || (typeof getPhase === 'function' && Number(getPhase()) > 1)) ? 18 : 0;
+    const mutatorInset = varietyState.active ? 48 : 0;
+
+    return {
+      left: fromNode.x - W * anchor.x + 62,
+      right: fromNode.x + W * (1 - anchor.x) - 62,
+      top: fromNode.y - H * anchor.y + 114 + statusInset + mutatorInset,
+      bottom: fromNode.y + H * (1 - anchor.y) - 64
+    };
+  }
+
+  function repositionBranch(fromNode, branch, targetOffset, distanceMul){
+    if (!fromNode || !branch) return branch;
+
+    const distanceNow = dist(fromNode.x, fromNode.y, branch.x, branch.y) || 220;
+    const distanceTarget = distanceNow * distanceMul;
+    const angle = -Math.PI/2 + targetOffset;
+    let nx = fromNode.x + Math.cos(angle) * distanceTarget;
+    let ny = fromNode.y + Math.sin(angle) * distanceTarget;
+
+    const bounds = getVarietySafeBounds(fromNode);
+    if (bounds) {
+      nx = clampNumber(nx, bounds.left, bounds.right);
+      ny = clampNumber(ny, bounds.top, bounds.bottom);
+    }
+
+    branch.x = nx;
+    branch.y = ny;
+    branch.baseX = nx;
+    branch.baseY = ny;
+    return branch;
+  }
+
   function findExtraAngleOffset(fromNode, branches){
     const mobilePortrait = isMobilePortraitVariety();
     const candidateOffsets = branches.length >= 3
@@ -255,6 +318,49 @@
 
     const offset = getAngleOffsetForNode(payload.fromNode, branches[replaceIdx]);
     branches[replaceIdx] = sanitizeExtraBranch(placeBranch(payload.fromNode, 'gold', offset));
+
+    const mobilePortrait = isMobilePortraitVariety();
+    const ordered = branches
+      .slice()
+      .sort((a, b) => getAngleOffsetForNode(payload.fromNode, a) - getAngleOffsetForNode(payload.fromNode, b));
+    const goldIdx = ordered.findIndex(branch => branch && branch.tier === 'gold');
+    const arranged = (goldIdx >= 0 && ordered.length === 3)
+      ? [ordered.filter((_, idx) => idx !== goldIdx)[0], ordered[goldIdx], ordered.filter((_, idx) => idx !== goldIdx)[1]]
+      : ordered;
+    const offsets = getTreasureOffsets(arranged.length, mobilePortrait);
+
+    arranged.forEach((branch, idx) => {
+      const distanceMul = branch.tier === 'gold'
+        ? (mobilePortrait ? 1.12 : 1.08)
+        : (branch.tier === 'hard' ? 1.08 : 1.04);
+      repositionBranch(payload.fromNode, branch, offsets[idx] ?? 0, distanceMul);
+      if (branch.tier === 'gold') {
+        branch.captureR += 2;
+        branch.pulse += 0.4;
+      }
+    });
+
+    payload.branches = branches;
+    return payload;
+  }
+
+  function applyResonanceField(payload){
+    const branches = Array.isArray(payload.branches) ? payload.branches : [];
+    if (!payload.fromNode || branches.length < 2) return payload;
+
+    const mobilePortrait = isMobilePortraitVariety();
+    const ordered = branches
+      .slice()
+      .sort((a, b) => getAngleOffsetForNode(payload.fromNode, a) - getAngleOffsetForNode(payload.fromNode, b));
+    const offsets = getResonanceOffsets(ordered.length, mobilePortrait);
+
+    ordered.forEach((branch, idx) => {
+      const tierDistanceMul = branch.tier === 'hard' || branch.tier === 'gold'
+        ? 1.10
+        : (branch.tier === 'medium' ? 1.07 : 1.04);
+      repositionBranch(payload.fromNode, branch, offsets[idx] ?? 0, mobilePortrait ? tierDistanceMul * 1.04 : tierDistanceMul);
+    });
+
     payload.branches = branches;
     return payload;
   }
@@ -262,6 +368,9 @@
   function runVarietyBuildSpawnBranches(payload){
     if (!payload || !varietyState.active || zenMode) return payload;
 
+    if (varietyState.active.id === 'resonance_field') {
+      return applyResonanceField(payload);
+    }
     if (varietyState.active.id === 'forked_paths') {
       return applyForkedPaths(payload);
     }
@@ -311,11 +420,20 @@
 
   function runVarietyAdjustPlaceBranchConfig(config){
     if (!config || !varietyState.active) return config;
-    if (varietyState.active.id !== 'forked_paths') return config;
-
     const mobilePortrait = isMobilePortraitVariety();
     const phase = typeof getPhase === 'function' ? Number(getPhase()) || 1 : 1;
     const scorePressure = clamp((Number(score) - 18) / 60, 0, 1);
+
+    if (varietyState.active.id === 'resonance_field') {
+      const spreadBoost = mobilePortrait ? (1.10 + scorePressure * 0.08 + Math.max(0, phase - 2) * 0.025) : 1.05;
+      config.baseDist *= spreadBoost;
+      config.minSpacing += mobilePortrait ? 20 : 10;
+      config.angleJitter *= mobilePortrait ? 0.76 : 0.86;
+      return config;
+    }
+
+    if (varietyState.active.id !== 'forked_paths') return config;
+
     const spreadBoost = mobilePortrait ? (1.16 + scorePressure * 0.10 + Math.max(0, phase - 2) * 0.03) : 1.08;
 
     config.baseDist *= spreadBoost;

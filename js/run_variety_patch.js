@@ -260,8 +260,12 @@
     if (!payload || !varietyState.active) return payload;
 
     if (varietyState.active.id === 'resonance_field') {
-      if (payload.tier === 'easy' || payload.tier === 'medium') payload.value += 8;
-      else payload.value += 3;
+      const phase = typeof getPhase === 'function' ? Number(getPhase()) || 1 : 1;
+      if (payload.tier === 'easy') payload.value += 6;
+      else if (payload.tier === 'medium') {
+        if (phase >= 5) payload.value += 4;
+        else if (phase >= 3) payload.value += 2;
+      } else payload.value += 2;
     } else if (varietyState.active.id === 'treasure_surge' && payload.tier === 'gold') {
       payload.value += 6;
     }

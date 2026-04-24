@@ -131,6 +131,10 @@
     if (ev && ev.id === 'calm_orbit' && (tier === 'easy' || tier === 'medium')) r += 6;
 
     const phase = typeof getPhase === 'function' ? getPhase() : 1;
+    if (!zenMode && tier === 'medium') {
+      if (phase === 2) r -= isMobilePortraitGameplay() ? 8 : 6;
+      else if (phase === 3) r -= 3;
+    }
     if (!zenMode && phase >= 5 && (tier === 'hard' || tier === 'gold')) r += 2;
 
     const shrink = zenMode ? 0 : Math.min(score * 0.10, 8);

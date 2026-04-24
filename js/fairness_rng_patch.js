@@ -110,7 +110,8 @@
     };
   }
 
-  function getTierRiskRank(tier){
+  function getTierRiskRank(tier, phase){
+    if (tier === 'easy' && phase >= 3) return 1;
     switch (tier) {
       case 'easy': return 0;
       case 'medium': return 1;
@@ -120,23 +121,32 @@
     }
   }
 
-  function getCanonicalBranchOffsets(orderedBranches){
+  function getCanonicalBranchOffsets(orderedBranches, phase){
     const mobilePortrait = isMobilePortraitGameplay();
     const count = Array.isArray(orderedBranches) ? orderedBranches.length : Number(orderedBranches) || 0;
     const tiers = Array.isArray(orderedBranches) ? orderedBranches.map(branch => branch && branch.tier) : [];
 
-    if (count === 3 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'hard') {
+    if (phase < 3 && count === 3 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'hard') {
       return mobilePortrait ? [-1.12, 0.80, 0.08] : [-1.00, 0.72, 0.04];
     }
-    if (count === 3 && tiers[2] === 'gold') {
-      return mobilePortrait ? [-1.14, 0.76, 0.02] : [-1.02, 0.68, 0];
+    if (phase < 3 && count === 3 && tiers[0] === 'easy' && tiers[1] === 'easy' && tiers[2] === 'medium') {
+      return mobilePortrait ? [-1.12, 1.04, 0.04] : [-1.00, 0.94, 0.02];
     }
-    if (count === 4 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'hard' && tiers[3] === 'gold') {
-      return mobilePortrait ? [-1.22, -0.72, 0.80, 0.04] : [-1.10, -0.64, 0.72, 0.02];
+    if (count === 3 && tiers[0] === 'easy' && tiers[1] === 'hard' && tiers[2] === 'gold') {
+      return mobilePortrait ? [-1.14, -0.36, 0.38] : [-1.02, -0.32, 0.32];
+    }
+    if (count === 3 && tiers[2] === 'gold') {
+      return mobilePortrait ? [-1.16, -0.18, 0.34] : [-1.04, -0.14, 0.28];
+    }
+    if (phase < 3 && count === 4 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'hard' && tiers[3] === 'gold') {
+      return mobilePortrait ? [-1.12, 0.82, -0.34, 0.26] : [-1.02, 0.74, -0.30, 0.22];
+    }
+    if (phase < 3 && count === 4 && tiers[0] === 'easy' && tiers[1] === 'medium' && tiers[2] === 'medium' && tiers[3] === 'hard') {
+      return mobilePortrait ? [-1.10, -0.46, 0.92, 0.02] : [-1.00, -0.40, 0.82, 0];
     }
 
     if (count >= 4) {
-      return mobilePortrait ? [-1.24, -0.40, 0.40, 1.24] : [-1.14, -0.34, 0.34, 1.14];
+      return mobilePortrait ? [-1.12, 0.82, -0.34, 0.26] : [-1.02, 0.74, -0.30, 0.22];
     }
     if (count === 3) {
       return mobilePortrait ? [-1.16, 0, 1.16] : [-1.04, 0, 1.04];
@@ -147,13 +157,14 @@
   function getTierDistanceLayoutMul(tier, phase){
     const mobilePortrait = isMobilePortraitGameplay();
     const phasePressure = clampValue((phase - 1) / 5, 0, 1);
+    const effectiveTier = (tier === 'easy' && phase >= 3) ? 'medium' : tier;
     const map = {
-      easy: mobilePortrait ? 1.00 : 1.00,
-      medium: mobilePortrait ? (1.04 + phasePressure * 0.03) : (1.03 + phasePressure * 0.02),
-      hard: mobilePortrait ? (1.22 + phasePressure * 0.07) : (1.16 + phasePressure * 0.05),
-      gold: mobilePortrait ? (1.30 + phasePressure * 0.08) : (1.22 + phasePressure * 0.06)
+      easy: mobilePortrait ? (1.03 + phasePressure * 0.02) : (1.02 + phasePressure * 0.02),
+      medium: mobilePortrait ? (1.09 + phasePressure * 0.04) : (1.06 + phasePressure * 0.03),
+      hard: mobilePortrait ? (1.28 + phasePressure * 0.08) : (1.20 + phasePressure * 0.06),
+      gold: mobilePortrait ? (1.42 + phasePressure * 0.12) : (1.32 + phasePressure * 0.10)
     };
-    return map[tier] || 1;
+    return map[effectiveTier] || 1;
   }
 
   function repositionCanonicalBranch(fromNode, branch, phase, targetOffset){
@@ -176,24 +187,86 @@
     return branch;
   }
 
+  function getBranchVisualRadius(branch){
+    if (!branch) return 24;
+    const nodeRadius = Number(branch.nodeR) || (typeof NODE_R === 'number' ? NODE_R : 12);
+    const captureRadius = Number(branch.captureR) || 0;
+    return Math.max(nodeRadius * 2.1, captureRadius * 0.62, 22);
+  }
+
+  function getBranchSeparationGap(a, b){
+    const mobilePortrait = isMobilePortraitGameplay();
+    const riskPad =
+      (a && (a.tier === 'hard' || a.tier === 'gold')) ||
+      (b && (b.tier === 'hard' || b.tier === 'gold'))
+        ? (mobilePortrait ? 12 : 8)
+        : (mobilePortrait ? 8 : 6);
+    return getBranchVisualRadius(a) + getBranchVisualRadius(b) + riskPad;
+  }
+
+  function separateCanonicalBranches(fromNode, ordered, phase){
+    if (!fromNode || !Array.isArray(ordered) || ordered.length < 2) return ordered;
+
+    for (let pass = 0; pass < 3; pass++) {
+      let changed = false;
+
+      for (let i = 0; i < ordered.length - 1; i++) {
+        for (let j = i + 1; j < ordered.length; j++) {
+          const anchor = ordered[i];
+          const mover = ordered[j];
+          if (!anchor || !mover) continue;
+
+          const dx = mover.x - anchor.x;
+          const dy = mover.y - anchor.y;
+          const currentGap = Math.hypot(dx, dy) || 0.001;
+          const minGap = getBranchSeparationGap(anchor, mover);
+          if (currentGap >= minGap) continue;
+
+          const shortage = minGap - currentGap;
+          const radialAngle = Math.atan2(mover.y - fromNode.y, mover.x - fromNode.x);
+          const lateralSign = mover.x >= anchor.x ? 1 : -1;
+          let nx = mover.x + Math.cos(radialAngle) * shortage * 0.82;
+          let ny = mover.y + Math.sin(radialAngle) * shortage * 0.82;
+          nx += Math.cos(radialAngle + Math.PI / 2) * shortage * 0.26 * lateralSign;
+          ny += Math.sin(radialAngle + Math.PI / 2) * shortage * 0.26 * lateralSign;
+
+          const adjusted = clampSpawnToMobileSafeZone(nx, ny, fromNode, phase, mover.tier);
+          mover.x = adjusted.x;
+          mover.y = adjusted.y;
+          mover.baseX = adjusted.x;
+          mover.baseY = adjusted.y;
+          changed = true;
+        }
+      }
+
+      if (!changed) break;
+    }
+
+    return ordered;
+  }
+
   function applyCanonicalPhaseLayout(fromNode, branches, phase){
     if (!fromNode || !Array.isArray(branches) || branches.length < 2) return branches;
 
     const ordered = branches
       .slice()
       .sort((a, b) => {
-        const riskDiff = getTierRiskRank(a && a.tier) - getTierRiskRank(b && b.tier);
+        const riskDiff = getTierRiskRank(a && a.tier, phase) - getTierRiskRank(b && b.tier, phase);
         if (riskDiff !== 0) return riskDiff;
         return (a && a.pts || 0) - (b && b.pts || 0);
       });
-    const offsets = getCanonicalBranchOffsets(ordered);
+    const offsets = getCanonicalBranchOffsets(ordered, phase);
 
     ordered.forEach((branch, idx) => {
       repositionCanonicalBranch(fromNode, branch, phase, offsets[idx] ?? 0);
     });
 
+    separateCanonicalBranches(fromNode, ordered, phase);
+
     return branches;
   }
+
+  window.__orbitaApplyCanonicalPhaseLayout = applyCanonicalPhaseLayout;
 
   function canPlaceAsteroid(ax, ay, fromNode, targetNode){
     if (!fromNode || !targetNode) return false;
@@ -209,13 +282,21 @@
     const tier = payload && payload.tier;
     const base = {easy:64, medium:54, hard:44, gold:40};
     const floor = {easy:38, medium:36, hard:34, gold:32};
-    let r = base[tier] || 52;
+    const phase = typeof getPhase === 'function' ? getPhase() : 1;
+    const effectiveTier = (!zenMode && tier === 'easy' && phase >= 3) ? 'medium' : tier;
+    let r = base[effectiveTier] || 52;
     if (zenMode) r += 15;
 
     const ev = (typeof getActiveEvent === 'function') ? getActiveEvent() : null;
-    if (ev && ev.id === 'calm_orbit' && (tier === 'easy' || tier === 'medium')) r += 6;
+    if (ev && ev.id === 'calm_orbit' && (effectiveTier === 'easy' || effectiveTier === 'medium')) r += 6;
 
-    const phase = typeof getPhase === 'function' ? getPhase() : 1;
+    if (!zenMode && tier === 'easy') {
+      if (phase >= 3) {
+        r += 0;
+      } else if (phase >= 2) {
+        r -= isMobilePortraitGameplay() ? 7 : 5;
+      }
+    }
     if (!zenMode && tier === 'medium') {
       if (phase === 2) r -= isMobilePortraitGameplay() ? 8 : 6;
       else if (phase === 3) r -= 3;
@@ -223,7 +304,7 @@
     if (!zenMode && phase >= 5 && (tier === 'hard' || tier === 'gold')) r += 2;
 
     const shrink = zenMode ? 0 : Math.min(score * 0.10, 8);
-    payload.value = Math.max(r - shrink, floor[tier] || 34);
+    payload.value = Math.max(r - shrink, floor[effectiveTier] || 34);
     return payload;
   }
 

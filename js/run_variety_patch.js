@@ -154,6 +154,14 @@
     return varietyState.active;
   }
 
+  function applyCanonicalVarietyLayout(payload){
+    if (!payload || !payload.fromNode || !Array.isArray(payload.branches)) return payload;
+    if (typeof window.__orbitaApplyCanonicalPhaseLayout === 'function') {
+      window.__orbitaApplyCanonicalPhaseLayout(payload.fromNode, payload.branches, payload.phase || (typeof getPhase === 'function' ? getPhase() : 1));
+    }
+    return payload;
+  }
+
   function isMobilePortraitVariety(){
     try {
       return H > W && Math.min(W, H) <= 900;
@@ -184,6 +192,9 @@
   }
 
   function getResonanceOffsets(count, mobilePortrait){
+    if (count === 2) {
+      return mobilePortrait ? [-1.08, 0.92] : [-0.96, 0.84];
+    }
     if (count >= 4) {
       return mobilePortrait ? [-1.18, -0.40, 0.40, 1.18] : [-1.08, -0.34, 0.34, 1.08];
     }
@@ -280,7 +291,7 @@
 
     if (extra) branches.push(extra);
     payload.branches = branches;
-    return payload;
+    return applyCanonicalVarietyLayout(payload);
   }
 
   function applyTreasureSurge(payload){
@@ -341,7 +352,7 @@
     });
 
     payload.branches = branches;
-    return payload;
+    return applyCanonicalVarietyLayout(payload);
   }
 
   function applyResonanceField(payload){
@@ -357,12 +368,12 @@
     ordered.forEach((branch, idx) => {
       const tierDistanceMul = branch.tier === 'hard' || branch.tier === 'gold'
         ? 1.10
-        : (branch.tier === 'medium' ? 1.07 : 1.04);
+        : (branch.tier === 'medium' ? 1.10 : 1.12);
       repositionBranch(payload.fromNode, branch, offsets[idx] ?? 0, mobilePortrait ? tierDistanceMul * 1.04 : tierDistanceMul);
     });
 
     payload.branches = branches;
-    return payload;
+    return applyCanonicalVarietyLayout(payload);
   }
 
   function runVarietyBuildSpawnBranches(payload){
@@ -385,10 +396,15 @@
 
     if (varietyState.active.id === 'resonance_field') {
       const phase = typeof getPhase === 'function' ? Number(getPhase()) || 1 : 1;
-      if (payload.tier === 'easy') payload.value += 6;
+      if (payload.tier === 'easy') {
+        if (phase >= 5) payload.value += 4;
+        else if (phase >= 3) payload.value += 3;
+        else payload.value += 2;
+      }
       else if (payload.tier === 'medium') {
         if (phase >= 5) payload.value += 4;
-        else if (phase >= 3) payload.value += 2;
+        else if (phase >= 3) payload.value += 3;
+        else payload.value += 2;
       } else payload.value += 2;
     } else if (varietyState.active.id === 'treasure_surge' && payload.tier === 'gold') {
       payload.value += 6;

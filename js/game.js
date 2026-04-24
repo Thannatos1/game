@@ -1208,7 +1208,16 @@ function update(dt){
   // Cleanup
   for(let i=nodes.length-1;i>=0;i--){
     const n=nodes[i];
-    if(n.captured&&dist(n.x,n.y,ball.x,ball.y)>W*2){
+    const sx = n.x - cam.x;
+    const sy = n.y - cam.y;
+    const offscreenCaptured =
+      n.captured &&
+      i !== ball.currentNode &&
+      (
+        sx < -180 || sx > W + 180 ||
+        sy < -180 || sy > H + 220
+      );
+    if((n.captured&&dist(n.x,n.y,ball.x,ball.y)>W*2) || offscreenCaptured){
       nodes.splice(i,1);
       if(i<=ball.currentNode)ball.currentNode--;
     }

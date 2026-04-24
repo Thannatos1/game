@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orbita-pwa-v33';
+const CACHE_NAME = 'orbita-pwa-v41';
 const APP_SHELL = [
   './',
   './index.html',

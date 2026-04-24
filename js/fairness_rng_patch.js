@@ -172,13 +172,16 @@
     const phaseNeedsMobileTightening = mobilePortrait && phase >= 2;
     const crowdRelief = mobilePortrait ? clampValue((score - 22) / 42, 0, 1) : 0;
     const phaseTwoSpreadBoost = mobilePortrait && phase === 2 ? 1.08 : 1;
+    const phaseSpreadBoost = mobilePortrait ? Math.max(0, phase - 1) * 0.05 : 0;
+    const scoreSpreadBoost = mobilePortrait ? clampValue((score - 14) / 60, 0, 1) * 0.12 : 0;
+    const difficultySpreadBoost = 1 + phaseSpreadBoost + scoreSpreadBoost;
 
-    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? (0.93 + crowdRelief * 0.07) : 1) * phaseTwoSpreadBoost;
+    config.baseDist = (220 + Math.min(score * 1.6, 80)) * (phaseNeedsMobileTightening ? (0.93 + crowdRelief * 0.07) : 1) * phaseTwoSpreadBoost * difficultySpreadBoost;
     config.baseAngle = -Math.PI/2 + (config.angleOffset * (phaseNeedsMobileTightening ? 0.94 : 1));
     config.distJitterMin = -24;
     config.distJitterMax = 24;
     config.angleJitter = 0.16 * (phaseNeedsMobileTightening ? (0.94 - crowdRelief * 0.10) : 1);
-    config.minSpacing = mobilePortrait ? (160 + crowdRelief * 14 + (phase === 2 ? 12 : 0)) : 158;
+    config.minSpacing = mobilePortrait ? (168 + crowdRelief * 18 + Math.max(0, phase - 1) * 8 + (phase === 2 ? 12 : 0)) : 158;
     config.maxAttempts = mobilePortrait ? 34 : 24;
     config.movingSpeedMin = 1.1;
     config.movingSpeedMax = 1.9;
@@ -226,21 +229,21 @@
         branches.push(placeBranch(fromNode, 'hard', rand(-0.08, 0.08)));
       }
     } else if (phase <= 3) {
-      branches.push(placeBranch(fromNode, 'easy', rand(-1.0,-0.62)));
-      branches.push(placeBranch(fromNode, 'medium', rand(-0.12,0.12)));
-      branches.push(placeBranch(fromNode, 'hard', rand(0.62,1.0)));
+      branches.push(placeBranch(fromNode, 'easy', rand(-1.08,-0.70)));
+      branches.push(placeBranch(fromNode, 'medium', rand(-0.16,0.16)));
+      branches.push(placeBranch(fromNode, 'hard', rand(0.70,1.08)));
     } else {
       const goldChance = phase >= 6 ? 0.26 : (phase === 5 ? 0.22 : 0.16);
       const forceGold = fairnessState.branchSetsSinceGold >= 3;
 
-      branches.push(placeBranch(fromNode, 'easy', rand(-1.0,-0.64)));
-      branches.push(placeBranch(fromNode, 'hard', rand(0.64,1.0)));
+      branches.push(placeBranch(fromNode, 'easy', rand(-1.08,-0.70)));
+      branches.push(placeBranch(fromNode, 'hard', rand(0.70,1.08)));
 
       if (forceGold || Math.random() < goldChance) {
-        branches.push(placeBranch(fromNode, 'gold', rand(-0.10, 0.10)));
+        branches.push(placeBranch(fromNode, 'gold', rand(-0.14, 0.14)));
         fairnessState.branchSetsSinceGold = 0;
       } else {
-        branches.push(placeBranch(fromNode, 'medium', rand(-0.10, 0.10)));
+        branches.push(placeBranch(fromNode, 'medium', rand(-0.14, 0.14)));
         fairnessState.branchSetsSinceGold += 1;
       }
     }

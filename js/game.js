@@ -319,8 +319,13 @@ function genAsteroidShape(){
 function getGameplayCameraAnchor(isFlying){
   const mobilePortrait = H > W && Math.min(W, H) <= 900;
   if (mobilePortrait) {
-    const pressure = clamp((score - 22) / 70, 0, 1);
-    return { x: 0.5, y: isFlying ? (0.66 + pressure * 0.03) : (0.60 + pressure * 0.04) };
+    const scorePressure = clamp((score - 18) / 70, 0, 1);
+    const phasePressure = clamp((getPhase() - 1) / 5, 0, 1);
+    const pressure = Math.max(scorePressure * 0.7, phasePressure);
+    return {
+      x: 0.5,
+      y: isFlying ? (0.72 + pressure * 0.06) : (0.70 + pressure * 0.08)
+    };
   }
   return { x: 0.5, y: 0.5 };
 }
@@ -402,12 +407,13 @@ function getGameplayAutoZoomTarget(isFlying){
     consumeCandidate(n.x, n.y, Math.max(n.captureR + 10, n.nodeR + 18));
   }
 
-  const scorePressure = clamp((score - 22) / 55, 0, 1);
-  const phasePressure = clamp((getPhase() - 2) / 4, 0, 1);
+  const scorePressure = clamp((score - 18) / 55, 0, 1);
+  const phasePressure = clamp((getPhase() - 1) / 5, 0, 1);
+  const difficultyPressure = Math.max(scorePressure, phasePressure * 0.95);
   const baselineZoom = isFlying
-    ? (0.92 - scorePressure * 0.12)
-    : (1 - Math.max(scorePressure * 0.10, phasePressure * 0.06));
-  const minZoom = isFlying ? 0.76 : 0.82;
+    ? (0.90 - difficultyPressure * 0.16)
+    : (0.98 - difficultyPressure * 0.15);
+  const minZoom = isFlying ? 0.70 : 0.74;
   const maxZoom = isFlying ? 0.92 : 1;
 
   targetZoom = Math.min(targetZoom, baselineZoom);

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_icon_description">Last Orbit app icon</string>
+    <string name="onboarding_headline">One touch. One last orbit.</string>
+    <string name="onboarding_body">Release at the right moment, capture the next node, and keep your run alive.</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_footer">The game opens securely inside Last Orbit.</string>
+</resources>

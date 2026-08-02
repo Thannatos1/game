@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_icon_description">Icono de la aplicación Last Orbit</string>
+    <string name="onboarding_headline">Un toque. Una última órbita.</string>
+    <string name="onboarding_body">Suelta en el momento justo, captura el siguiente nodo y mantén viva tu partida.</string>
+    <string name="onboarding_get_started">Empezar</string>
+    <string name="onboarding_footer">El juego se abre de forma segura dentro de Last Orbit.</string>
+</resources>

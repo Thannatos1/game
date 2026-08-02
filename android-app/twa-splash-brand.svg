@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <radialGradient id="moon" cx="42%" cy="34%" r="68%">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.7" stop-color="#F4FFFD"/>
+      <stop offset="1" stop-color="#9EF4E6"/>
+    </radialGradient>
+    <filter id="moon-glow" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+    <filter id="satellite-glow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <circle cx="600" cy="450" r="260" fill="none" stroke="#28E0C1"
+      stroke-width="13" stroke-linecap="round" stroke-dasharray="31 40" opacity="0.58"
+      transform="rotate(-12 600 450)"/>
+  <circle cx="600" cy="450" r="214" fill="#28E0C1" opacity="0.2"
+      filter="url(#moon-glow)"/>
+  <circle cx="600" cy="450" r="178" fill="url(#moon)"/>
+
+  <circle cx="543" cy="430" r="14" fill="#071126"/>
+  <circle cx="657" cy="430" r="14" fill="#071126"/>
+  <path d="M540 496 C574 549 626 549 660 496" fill="none" stroke="#071126"
+      stroke-width="18" stroke-linecap="round"/>
+
+  <circle cx="784" cy="270" r="32" fill="#28E0C1" opacity="0.2"
+      filter="url(#satellite-glow)"/>
+  <circle cx="784" cy="270" r="12" fill="#FFFFFF"/>
+  <circle cx="784" cy="270" r="6" fill="#28E0C1"/>
+
+  <text x="600" y="820" fill="#98A5B8" font-family="Arial, Helvetica, sans-serif"
+      font-size="48" font-weight="600" text-anchor="middle">LAST</text>
+  <text x="600" y="920" fill="#F7FFFF" font-family="Arial, Helvetica, sans-serif"
+      font-size="104" font-weight="700" text-anchor="middle">ORBIT</text>
+</svg>

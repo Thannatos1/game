@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orbita-pwa-v141';
+const CACHE_NAME = 'orbita-pwa-v142';
 const SUPABASE_SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js';
 const SENTRY_SDK_URL = 'https://browser.sentry-cdn.com/7.119.2/bundle.min.js';
 const APP_SHELL = [
@@ -18,9 +18,11 @@ const APP_SHELL = [
   './js/gameplay_ui.js',
   './js/i18n.js',
   './js/audio_panel.js',
+  './js/data_deletion.js',
   './js/flappy_radical_patch.js',
   './js/main.js',
   './privacy-policy.html',
+  './data-deletion.html',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './screenshots/screen-menu.png',

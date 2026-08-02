@@ -34,7 +34,8 @@
 <body>
 
 <div class="lang-switch">
-  <a href="#pt">Português</a> · <a href="#en">English</a>
+  <a href="#pt">Português</a> · <a href="#en">English</a> ·
+  <a href="/data-deletion.html">Exclusão de dados / Data deletion</a>
 </div>
 
 <!-- ============================================================
@@ -43,7 +44,7 @@
 <section id="pt">
 
 <h1>Política de Privacidade</h1>
-<p class="updated">Última atualização: 3 de maio de 2026 · Versão 2.1</p>
+<p class="updated">Última atualização: 2 de agosto de 2026 · Versão 2.2</p>
 
 <p>
   Esta Política de Privacidade descreve como o jogo <strong>Last Orbit</strong>
@@ -59,10 +60,10 @@
 <h2>1. Resumo executivo</h2>
 <ul>
   <li><strong>Não pedimos seu nome, e-mail, telefone ou localização.</strong> O jogo funciona sem login.</li>
-  <li>Geramos um <strong>identificador anônimo aleatório (UUID)</strong> armazenado <em>apenas no seu próprio aparelho</em>, para medir retenção (D1/D7) e qualidade do jogo.</li>
+  <li>Geramos um <strong>identificador anônimo aleatório (UUID)</strong> no seu aparelho e o enviamos junto com eventos de telemetria para medir retenção (D1/D7), qualidade do jogo e abuso.</li>
   <li>Coletamos <strong>eventos de jogo</strong> (abertura, início de partida, fim de partida com pontuação) — <em>nenhum dado pessoal identificável</em>.</li>
   <li>Os dados são processados pela <strong>Supabase</strong> (infraestrutura de backend) com criptografia HTTPS/TLS.</li>
-  <li>Você pode <strong>apagar tudo</strong> a qualquer momento limpando os dados do app no Android (Configurações → Apps → Last Orbit → Armazenamento → Limpar dados).</li>
+  <li>Você pode apagar os dados locais nas configurações do Android e solicitar a exclusão da telemetria no servidor pela nossa <a href="/data-deletion.html">página de exclusão de dados</a>.</li>
 </ul>
 
 <h2>2. Quais dados coletamos</h2>
@@ -80,9 +81,10 @@
   <li>Assinatura de integridade do save (hash anti-fraude)</li>
 </ul>
 <p>
-  <strong>Esses dados nunca saem do seu aparelho</strong>, exceto quando enviados como
-  parte de um evento de telemetria descrito abaixo. Eles são removidos quando você
-  desinstala o app ou limpa os dados pelas configurações do sistema.
+  Esses dados permanecem no aparelho, exceto pelos campos enviados como parte dos
+  eventos de telemetria descritos abaixo. A cópia local é removida quando você
+  desinstala o app ou limpa os dados pelas configurações do sistema; isso não exclui
+  automaticamente eventos que já tenham sido enviados ao servidor.
 </p>
 
 <h3>2.2 Dados enviados para nosso servidor (telemetria)</h3>
@@ -184,7 +186,7 @@
   <li>Toda comunicação com o servidor usa <strong>HTTPS/TLS 1.2+</strong> (criptografia em trânsito).</li>
   <li>Os dados em repouso são criptografados pela infraestrutura da Supabase.</li>
   <li>O Last Orbit aplica <strong>políticas de Row-Level Security (RLS)</strong> no banco — nenhum usuário pode ler eventos de outros.</li>
-  <li>O <code>anon_id</code> não é vinculado a nenhum identificador pessoal e é armazenado apenas localmente — se você apagar os dados do app, o ID é regenerado e o histórico antigo se torna anônimo no servidor.</li>
+  <li>O <code>anon_id</code> não é vinculado a nome, e-mail, AAID ou outro identificador pessoal. Ele fica salvo localmente e também acompanha os eventos de telemetria enviados ao servidor.</li>
 </ul>
 
 <h2>7. Retenção</h2>
@@ -196,6 +198,11 @@
 <p>
   Os dados locais (no seu aparelho) permanecem enquanto você não os apagar — você tem
   controle total via Configurações do Android → Apps → Last Orbit → Armazenamento → Limpar dados.
+</p>
+<p>
+  Quando você solicita a exclusão usando o <code>anon_id</code>, removemos do servidor os
+  eventos associados a esse identificador em até <strong>30 dias</strong>. Estatísticas já
+  agregadas e que não permitem identificar o <code>anon_id</code> podem ser mantidas.
 </p>
 
 <h2>8. Seus direitos</h2>
@@ -211,9 +218,9 @@
   <li>Revogar consentimento e eliminar os dados</li>
 </ul>
 <p>
-  Para exercer qualquer um desses direitos, entre em contato pelo e-mail abaixo
-  informando o seu <code>anon_id</code> (você pode encontrá-lo abrindo o console do navegador
-  no app e digitando <code>localStorage.getItem('orbita_anon_id')</code>).
+  Para exercer qualquer um desses direitos, siga as instruções da nossa
+  <a href="/data-deletion.html">página de exclusão de dados</a>. Ela mostra o
+  <code>anon_id</code> disponível neste aparelho e prepara o pedido por e-mail.
 </p>
 
 <h2>9. Crianças</h2>
@@ -262,7 +269,7 @@
 <section id="en">
 
 <h1 style="margin-top: 4rem;">Privacy Policy</h1>
-<p class="updated">Last updated: May 3, 2026 · Version 2.1</p>
+<p class="updated">Last updated: August 2, 2026 · Version 2.2</p>
 
 <p>
   This Privacy Policy describes how the <strong>Last Orbit</strong> game ("the app", "we",
@@ -277,10 +284,10 @@
 <h2>1. TL;DR</h2>
 <ul>
   <li><strong>We do not ask for your name, email, phone, or location.</strong> The game works without login.</li>
-  <li>We generate a <strong>random anonymous identifier (UUID)</strong> stored <em>only on your own device</em>, for measuring retention and gameplay quality.</li>
+  <li>We generate a <strong>random anonymous identifier (UUID)</strong> on your device and send it with telemetry events to measure retention, gameplay quality, and abuse.</li>
   <li>We collect <strong>gameplay events</strong> (app open, game start, game end with score) — <em>no personally identifiable information</em>.</li>
   <li>Data is processed by <strong>Supabase</strong> (backend infrastructure) with HTTPS/TLS encryption.</li>
-  <li>You can <strong>delete everything</strong> at any time by clearing app data on Android (Settings → Apps → Last Orbit → Storage → Clear data).</li>
+  <li>You can delete local data in Android settings and request deletion of server telemetry through our <a href="/data-deletion.html">data deletion page</a>.</li>
 </ul>
 
 <h2>2. Data we collect</h2>
@@ -296,8 +303,9 @@
   <li>Save-integrity signature (anti-fraud hash)</li>
 </ul>
 <p>
-  <strong>This data never leaves your device</strong>, except when sent as part of a
-  telemetry event described below. It is removed when you uninstall the app or clear data.
+  This data remains on the device except for fields sent as part of the telemetry events
+  described below. The local copy is removed when you uninstall the app or clear its data;
+  doing so does not automatically delete events already sent to the server.
 </p>
 
 <h3>2.2 Data sent to our server (telemetry)</h3>
@@ -383,7 +391,7 @@
   <li>All server communication uses <strong>HTTPS/TLS 1.2+</strong> (encryption in transit).</li>
   <li>Data at rest is encrypted by Supabase infrastructure.</li>
   <li>Last Orbit applies <strong>Row-Level Security (RLS)</strong> policies — no user can read other users' events.</li>
-  <li>The <code>anon_id</code> is not linked to any personal identifier and is stored only locally — if you clear app data, the ID regenerates and the old history becomes anonymous on the server.</li>
+  <li>The <code>anon_id</code> is not linked to a name, email address, AAID, or other personal identifier. It is stored locally and also accompanies telemetry events sent to the server.</li>
 </ul>
 
 <h2>6. Retention</h2>
@@ -391,6 +399,11 @@
   Telemetry events are retained for up to <strong>180 days</strong> on the server.
   After that period, they are aggregated into anonymous statistics and individual
   records are deleted.
+</p>
+<p>
+  When you submit a deletion request with your <code>anon_id</code>, we delete server
+  events associated with that identifier within <strong>30 days</strong>. Aggregated
+  statistics that can no longer be linked to the <code>anon_id</code> may be retained.
 </p>
 
 <h2>7. Your rights (GDPR / CCPA / LGPD)</h2>
@@ -406,8 +419,9 @@
   <li>Lodge a complaint with a supervisory authority</li>
 </ul>
 <p>
-  To exercise these rights, contact the email below with your <code>anon_id</code> (find
-  it via browser console: <code>localStorage.getItem('orbita_anon_id')</code>).
+  To exercise these rights, follow the instructions on our
+  <a href="/data-deletion.html">data deletion page</a>. It displays the
+  <code>anon_id</code> available on this device and prepares the email request.
 </p>
 
 <h2>8. Children</h2>
@@ -446,7 +460,7 @@
 </section>
 
 <div class="footer">
-  Last Orbit · Política de Privacidade v2.1 · 2026
+  Last Orbit · Política de Privacidade v2.2 · 2026
 </div>
 
 </body>

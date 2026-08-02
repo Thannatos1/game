@@ -14,62 +14,42 @@ Last Orbit
 
 ### Short description (max 80 chars)
 ```
-Solte a bola na hora certa. 1 toque. Difícil desde o primeiro segundo.
+Um arcade espacial de um toque: solte, capture a próxima órbita e sobreviva.
 ```
-*70/80 chars*
+*76/80 chars*
 
 ### Full description (max 4000 chars)
 ```
-🌑 LAST ORBIT — Um arcade espacial de UM toque, brutalmente difícil desde o primeiro segundo.
+LAST ORBIT
 
-Sua bola está presa em órbita. Solte ela no instante exato pra capturar o próximo nó. Erre por um milésimo de segundo? Você morre. E recomeça. E morre de novo.
+Um arcade espacial de um toque, rápido, preciso e difícil de dominar.
 
-Inspirado na simplicidade de Flappy Bird, mas com mecânica original: você não pula, você ORBITA. E só tem UM botão.
+A esfera está presa a uma órbita. Toque para soltá-la no momento certo, alcance o próximo nó e mantenha a sequência viva. Errou o tempo? A partida termina, e você pode tentar novamente quase imediatamente.
 
-⚡ POR QUE VOCÊ NÃO VAI CONSEGUIR PARAR
+COMO JOGAR
+• Toque para soltar a esfera
+• Capture o próximo nó
+• Encontre o ritmo entre velocidade e precisão
+• Supere seu próprio recorde
 
-▸ 1 botão. Sem texto chato — aprende jogando nos 3 primeiros runs
-▸ Reinício INSTANTÂNEO — em 0.18s você está jogando de novo
-▸ MEGA BÔNUS aleatórios em capturas (4% chance de x5 pontos)
-▸ Bônus Sorte (11% chance de x2)
-▸ Sequências de combo que escalam pontuação
-▸ Frases contextuais a cada morte: "QUASE!", "SÓ MAIS UMA", "RESPIRA"
+O QUE ENCONTRAR
+• Partidas curtas e controles simples
+• Dificuldade progressiva, com nós que se movem e desaparecem
+• Bônus e combos durante as capturas
+• Cenários cósmicos que evoluem com a pontuação
+• Música ambiente e efeitos sonoros configuráveis
+• Modo daltônico
+• Português, inglês e espanhol
 
-🎯 PROGRESSÃO REAL DE DIFICULDADE
+FEITO PARA HABILIDADE
+Last Orbit não usa vidas com tempo de espera nem exige conta para jogar. Seu progresso e recordes ficam salvos no aparelho.
 
-Cada partida começa fácil e fica brutal:
-▸ Fase 1-2: aprenda o ritmo
-▸ Fase 3-4: nós em movimento
-▸ Fase 5: nós que somem
-▸ Fase 6 (CAOS): tudo se move, tudo some, e a velocidade dobra
+ANÚNCIOS
+Atualmente, Last Orbit não exibe anúncios. Isso poderá mudar em atualizações futuras. Se anúncios forem adicionados, as informações da Play Store e as declarações de privacidade serão atualizadas.
 
-🌌 DESIGN MINIMALISTA, ESTÉTICA CÓSMICA
-
-▸ Visual com fundo progressivo que muda a cada 100 pontos
-▸ Música ambient generativa (não enche o saco em loop)
-▸ Modo daltônico incluído
-▸ Suporta português, inglês e espanhol (auto-detecta)
-
-🚀 100% OFFLINE, ZERO LOGIN
-
-▸ Joga no metrô, no avião, no banheiro
-▸ Sem conta, sem email, sem permissões invasivas
-▸ Recordes salvos no aparelho
-
-🛡️ JUSTO
-
-▸ Sem anúncios irritantes interrompendo o jogo
-▸ Sem "vidas" pra esperar recarregar
-▸ Sem moeda premium pra desbloquear coisa
-▸ Sua morte é SEMPRE culpa sua. Promessa.
-
-⚠️ AVISO
-
-Last Orbit é DIFÍCIL desde o primeiro toque. Foi feito pra ser punitivo. Se você quer um joguinho fácil pra passar o tempo, esse não é. Se você quer aquele "só mais uma vez" que vira 2 horas, esse é.
-
-Bem-vindo à órbita.
+Você consegue completar mais uma órbita?
 ```
-*~1.900/4.000 chars — espaço pra você adicionar mais se quiser*
+*1.124/4.000 chars*
 
 ### Categorização
 - **Tipo de aplicativo**: Jogos
@@ -97,60 +77,40 @@ Last Orbit
 
 ### Short description (max 80 chars)
 ```
-Release the ball at the right time. 1-tap arcade. Brutal from second 1.
+One-tap space arcade: release, catch the next orbit, and survive.
 ```
-*73/80 chars*
+*65/80 chars*
 
 ### Full description
 ```
-🌑 LAST ORBIT — A one-tap space arcade. Brutally hard from the very first second.
+LAST ORBIT
 
-Your ball is trapped in orbit. Release it at the exact instant to capture the next node. Off by a millisecond? You die. And restart. And die again.
+A fast, precise one-tap space arcade that is difficult to master.
 
-Inspired by Flappy Bird's simplicity, but with original mechanics: you don't jump, you ORBIT. One button. That's it.
+The orb is locked in orbit. Tap to release it at the right moment, reach the next node, and keep your run alive. Miss the timing? The run ends, and you can try again almost immediately.
 
-⚡ WHY YOU WON'T BE ABLE TO STOP
+HOW TO PLAY
+• Tap to release the orb
+• Capture the next node
+• Find the rhythm between speed and precision
+• Beat your personal best
 
-▸ 1 button. No text walls — learn by playing the first 3 runs
-▸ INSTANT restart — back in the game in 0.18 seconds
-▸ Random MEGA BONUS captures (4% chance of x5 points)
-▸ Lucky bonus (11% chance of x2)
-▸ Combo chains that scale your score
-▸ Contextual death messages: "ALMOST!", "ONE MORE", "BREATHE"
+WHAT TO EXPECT
+• Short runs and simple controls
+• Progressive difficulty with moving and vanishing nodes
+• Bonuses and combos during captures
+• Cosmic environments that evolve with your score
+• Adjustable ambient music and sound effects
+• Color-blind mode
+• Portuguese, English, and Spanish
 
-🎯 REAL DIFFICULTY PROGRESSION
+BUILT AROUND SKILL
+Last Orbit does not use timed lives and does not require an account to play. Your progress and records are saved on your device.
 
-Every run starts easy and gets brutal:
-▸ Phase 1-2: learn the rhythm
-▸ Phase 3-4: moving nodes
-▸ Phase 5: vanishing nodes
-▸ Phase 6 (CHAOS): everything moves, everything vanishes, speed doubles
+ADS
+Last Orbit currently contains no ads. This may change in future updates. If ads are introduced, the Play Store listing and privacy disclosures will be updated.
 
-🌌 MINIMAL DESIGN, COSMIC AESTHETIC
-
-▸ Progressive background that shifts every 100 points
-▸ Generative ambient music (doesn't get annoying on loop)
-▸ Color-blind mode included
-▸ Supports Portuguese, English, and Spanish (auto-detect)
-
-🚀 100% OFFLINE, ZERO LOGIN
-
-▸ Play on the subway, on a plane, in the bathroom
-▸ No account, no email, no invasive permissions
-▸ Records saved on device
-
-🛡️ FAIR
-
-▸ No annoying ads interrupting gameplay
-▸ No "lives" to wait recharging
-▸ No premium currency to unlock things
-▸ Your death is ALWAYS your fault. Promise.
-
-⚠️ WARNING
-
-Last Orbit is HARD from your first tap. It was designed to be punishing. If you want a chill little game to pass time, this isn't it. If you want that "just one more" that turns into 2 hours, this is.
-
-Welcome to the orbit.
+Can you complete one more orbit?
 ```
 
 ---
@@ -159,12 +119,41 @@ Welcome to the orbit.
 
 ### Short description
 ```
-Suelta la bola en el momento justo. 1 toque. Brutal desde el segundo 1.
+Arcade espacial de un toque: suelta, captura y sobrevive.
 ```
-*72/80*
+*57/80*
 
 ### Full description
-*(Tradução do PT acima — pode adicionar depois se quiser)*
+```
+LAST ORBIT
+
+Un arcade espacial de un toque, rápido, preciso y difícil de dominar.
+
+La esfera está atrapada en una órbita. Toca para soltarla en el momento preciso, alcanza el siguiente nodo y mantén viva tu partida. ¿Fallaste el momento? La partida termina y puedes intentarlo de nuevo casi de inmediato.
+
+CÓMO JUGAR
+• Toca para soltar la esfera
+• Captura el siguiente nodo
+• Encuentra el ritmo entre velocidad y precisión
+• Supera tu mejor puntuación
+
+QUÉ ENCONTRARÁS
+• Partidas cortas y controles simples
+• Dificultad progresiva con nodos que se mueven y desaparecen
+• Bonificaciones y combos durante las capturas
+• Escenarios cósmicos que evolucionan con tu puntuación
+• Música ambiental y efectos de sonido configurables
+• Modo para personas con daltonismo
+• Portugués, inglés y español
+
+HECHO PARA LA HABILIDAD
+Last Orbit no usa vidas con tiempo de espera ni requiere una cuenta para jugar. Tu progreso y tus récords se guardan en el dispositivo.
+
+ANUNCIOS
+Actualmente, Last Orbit no muestra anuncios. Esto podrá cambiar en futuras actualizaciones. Si se agregan anuncios, se actualizarán la ficha de Google Play y las declaraciones de privacidad.
+
+¿Puedes completar una órbita más?
+```
 
 ---
 

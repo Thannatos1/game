@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LastOrbit.Onboarding" parent="Theme.LastOrbit.Onboarding.Base">
+        <item name="android:windowSplashScreenBackground">@color/onboarding_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/twa_splash_brand</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimationDuration">220</item>
+    </style>
+</resources>
